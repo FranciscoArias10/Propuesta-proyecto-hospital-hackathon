@@ -22,9 +22,16 @@ function App() {
 
       <div className="relative z-10 w-full h-screen flex flex-col overflow-hidden">
         
-        {/* Fullscreen Chat Interface sin caja */}
         <div className="flex-1 w-full relative flex flex-col min-h-0">
-          <ChatInterface onChecklistUpdate={updateChecklist} />
+          
+          {/* Chat Interface */}
+          <div className="flex-1 relative flex flex-col min-h-0">
+            <ChatInterface onChecklistUpdate={updateChecklist} />
+          </div>
+
+          {/* Floating Draggable Checklist */}
+          <AnimateChecklist checklistData={checklistData} />
+
         </div>
 
       </div>
@@ -33,52 +40,49 @@ function App() {
 }
 
 const AnimateChecklist = ({ checklistData }) => {
-  if (!checklistData) {
-    return (
-      <motion.div 
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-        className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group"
-      >
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="flex items-center justify-center h-32 flex-col gap-3 text-slate-500">
-          <Stethoscope size={32} className="opacity-50" />
-          <p className="text-sm text-center">Cuéntame tus síntomas para estimar tu cobertura y copago.</p>
-        </div>
-      </motion.div>
-    );
-  }
+  if (!checklistData) return null;
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-slate-900/80 border border-emerald-500/30 rounded-2xl p-6 shadow-lg shadow-emerald-900/20"
+      drag
+      dragMomentum={false}
+      initial={{ opacity: 0, scale: 0.9, x: 20, y: -20 }}
+      animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+      className="absolute top-4 right-4 z-50 w-72 md:w-80 bg-slate-900/90 backdrop-blur-xl border border-emerald-500/40 rounded-2xl shadow-2xl shadow-emerald-900/40 cursor-grab active:cursor-grabbing"
+      style={{ touchAction: "none" }}
     >
-      <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-        <CreditCard className="text-emerald-400" size={24} />
-        {checklistData.nombre}
-      </h3>
-      <div className="space-y-4">
-        {checklistData.pasos.map((paso, idx) => {
-          let Icon = Building;
-          if (paso.text.toLowerCase().includes('especialidad')) Icon = Stethoscope;
-          if (paso.text.toLowerCase().includes('copago')) Icon = CreditCard;
-          
-          return (
-            <motion.div 
-              key={paso.id}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="flex items-start gap-3 bg-slate-800/50 p-3 rounded-xl border border-slate-700/50"
-            >
-              <div className="mt-0.5 p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400">
-                <Icon size={16} />
-              </div>
-              <span className="text-slate-200">{paso.text}</span>
-            </motion.div>
-          )
-        })}
+      {/* Drag Handle Area */}
+      <div className="w-full h-8 flex items-center justify-center border-b border-slate-700/50 mb-2 opacity-60 hover:opacity-100 transition-opacity">
+        <div className="w-12 h-1.5 bg-slate-500 rounded-full" />
+      </div>
+
+      <div className="p-5 pt-1">
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2 select-none">
+          <CreditCard className="text-emerald-400" size={20} />
+          {checklistData.nombre}
+        </h3>
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+          {checklistData.pasos.map((paso, idx) => {
+            let Icon = Building;
+            if (paso.text.toLowerCase().includes('especialidad')) Icon = Stethoscope;
+            if (paso.text.toLowerCase().includes('copago')) Icon = CreditCard;
+            
+            return (
+              <motion.div 
+                key={paso.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                className="flex items-start gap-3 bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/50 select-none"
+              >
+                <div className="mt-0.5 p-1 bg-emerald-500/10 rounded-lg text-emerald-400">
+                  <Icon size={16} />
+                </div>
+                <span className="text-sm text-slate-200 pointer-events-auto">{paso.text}</span>
+              </motion.div>
+            )
+          })}
+        </div>
       </div>
     </motion.div>
   );
