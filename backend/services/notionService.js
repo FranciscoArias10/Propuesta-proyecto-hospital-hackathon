@@ -57,6 +57,8 @@ async function consultarNotion(especialidad) {
                || 'Sin plan',
     cobertura:    page.properties.Cobertura?.number ?? 0,
     costoBase:    page.properties['Costo Base']?.number ?? 0,
+    latitud:      page.properties.Latitud?.rich_text?.[0]?.plain_text || null,
+    longitud:     page.properties.Longitud?.rich_text?.[0]?.plain_text || null,
   }));
 }
 

@@ -7,6 +7,7 @@ import {
   detectarEspecialidadConIA,
   esEmergenciaVital,             // ← Detector de emergencia por IA (sin palabras clave)
   esConsultaMedica,              // ← Filtro de entrada
+  cleanAndValidateJSON
 } from './backend/services/aiService.js';
 import { obtenerHospitalesPorEspecialidad } from './backend/services/notionService.js';
 import { calcularCopagoExacto } from './backend/utils/calculator.js';
@@ -68,13 +69,28 @@ app.post('/api/chat', async (req, res) => {
     const contextoData = { especialidad, hospitales: datos_hospitales };
     const fullResponse = await obtenerAnalisisMedico(message, contextoData);
 
-    // ── PASO 5: Parsear checklist embebido en la respuesta ─────────────────────
+    // ── PASO 4.5: Extraer y limpiar JSON oculto ────────────────────────────────
+    const extraData = cleanAndValidateJSON(fullResponse);
+    
+    // Limpiamos la respuesta para no renderizar código JSON al usuario
     let responseContent = fullResponse;
+    const markdownJsonMatch = fullResponse.match(/```(?:json)?[\s\S]*?```/i);
+    if (markdownJsonMatch) {
+      responseContent = responseContent.replace(markdownJsonMatch[0], '');
+    } else {
+      const rawJsonMatch = fullResponse.match(/\{[\s\S]*\}/);
+      if (rawJsonMatch) {
+        responseContent = responseContent.replace(rawJsonMatch[0], '');
+      }
+    }
+    responseContent = responseContent.trim();
+
+    // ── PASO 5: Parsear checklist embebido en la respuesta ─────────────────────
     let checklistData = null;
 
-    const checklistMatch = fullResponse.match(/\[CHECKLIST_START\]([\s\S]*?)\[CHECKLIST_END\]/);
+    const checklistMatch = responseContent.match(/\[CHECKLIST_START\]([\s\S]*?)\[CHECKLIST_END\]/);
     if (checklistMatch) {
-      responseContent = fullResponse.replace(/\[CHECKLIST_START\][\s\S]*?\[CHECKLIST_END\]/, '').trim();
+      responseContent = responseContent.replace(/\[CHECKLIST_START\][\s\S]*?\[CHECKLIST_END\]/, '').trim();
       const checklistContent = checklistMatch[1];
       const titleMatch = checklistContent.match(/Título:\s*(.+)/i);
       const itemsMatches = checklistContent.match(/^[\s\t]*[-*•\d\.]+\s+(.+)$/gm);
@@ -93,7 +109,7 @@ app.post('/api/chat', async (req, res) => {
 
     // ── RESPUESTA FINAL: hospitales + botón de emergencia juntos ───────────────
     res.json({
-      is_emergency:     esEmergencia,   // ← la IA decide, no palabras clave
+      is_emergency:     esEmergencia || extraData.is_emergency,   // Combina ambas vías
       is_fallback,
       especialidad,
       datos_hospitales,

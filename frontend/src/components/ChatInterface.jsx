@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Mic, Volume2, VolumeX, Settings2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const ChatInterface = ({ onChecklistUpdate }) => {
+const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada }) => {
   const [messages, setMessages] = useState([
     { id: 1, text: "¡Hola! Soy tu Estimador Agéntico. ¿Qué malestar tienes hoy? Te ayudaré a encontrar la mejor opción económica en nuestra red de hospitales.", sender: 'bot' }
   ]);
@@ -20,6 +20,7 @@ const ChatInterface = ({ onChecklistUpdate }) => {
   const recognitionRef = useRef(null);
   const transcriptRef = useRef("");
   const latestSettingsRef = useRef({ voiceEnabled: true, selectedVoiceURI: "", voices: [] });
+  const sendMessageRef = useRef(null); // Ref para evitar stale closure en el micrófono
 
   useEffect(() => {
     latestSettingsRef.current = { voiceEnabled, selectedVoiceURI, voices };
@@ -32,6 +33,11 @@ const ChatInterface = ({ onChecklistUpdate }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Mantener el ref siempre apuntando a la función más reciente (evita stale closure en el micrófono)
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  });
 
   // Load Voices
   useEffect(() => {
@@ -80,9 +86,9 @@ const ChatInterface = ({ onChecklistUpdate }) => {
 
       recognitionRef.current.onend = () => {
         setIsRecording(false);
-        // Auto-enviar si hay texto reconocido
+        // Usamos el ref para evitar el stale closure de sendMessage
         if (transcriptRef.current.trim()) {
-          sendMessage(transcriptRef.current);
+          sendMessageRef.current?.(transcriptRef.current);
           transcriptRef.current = "";
         }
       };
@@ -173,7 +179,8 @@ const ChatInterface = ({ onChecklistUpdate }) => {
       setMessages(prev => [...prev, {
         id: Date.now(),
         text: data.response,
-        sender: 'bot'
+        sender: 'bot',
+        datos_hospitales: data.datos_hospitales
       }]);
       
       // Detectar si el usuario se está despidiendo o agradeciendo para no encender el micro después
@@ -192,6 +199,9 @@ const ChatInterface = ({ onChecklistUpdate }) => {
       if (data.checklist && onChecklistUpdate) {
         onChecklistUpdate(data.checklist);
       }
+      if (data.datos_hospitales && onHospitalesUpdate) {
+        onHospitalesUpdate(data.datos_hospitales);
+      }
     } catch (error) {
       console.error('Error:', error);
       setMessages(prev => [...prev, {
@@ -204,13 +214,67 @@ const ChatInterface = ({ onChecklistUpdate }) => {
     }
   };
 
+  const handleSeleccionarHospital = (msgId, hospital) => {
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, hideChips: true } : m));
+    const userMsg = { id: Date.now(), text: `🏥 Elegí el ${hospital.hospital}`, sender: 'user' };
+    const botMsg = {
+      id: Date.now() + 1,
+      text: '¡Excelente elección! ¿Deseas que calcule la ruta en el mapa desde tu ubicación actual?',
+      sender: 'bot',
+      routeOptions: true,
+      selectedHospital: hospital
+    };
+    setMessages(prev => [...prev, userMsg, botMsg]);
+    speakMessage(botMsg.text, false);
+  };
+
+  const handleAceptarRuta = (msg, aceptar) => {
+    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, hideChips: true } : m));
+    const userText = aceptar ? '📍 Sí, usar mi ubicación' : 'No, gracias';
+    setMessages(prev => [...prev, { id: Date.now(), text: userText, sender: 'user' }]);
+
+    if (aceptar) {
+      if (!navigator.geolocation) {
+        const errorMsg = 'Lo siento, tu navegador no soporta geolocalización.';
+        setMessages(prev => [...prev, { id: Date.now() + 1, text: errorMsg, sender: 'bot' }]);
+        speakMessage(errorMsg, false);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const userLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          const successMsg = `📍 Ubicación obtenida. Trazando ruta hacia el ${msg.selectedHospital.hospital}...`;
+          setMessages(prev => [...prev, { id: Date.now() + 1, text: successMsg, sender: 'bot' }]);
+          speakMessage(successMsg, false);
+
+          if (onRutaSolicitada) {
+            onRutaSolicitada(userLocation, msg.selectedHospital);
+          }
+        },
+        (error) => {
+          const errorMsg = 'No pude acceder a tu ubicación. Asegúrate de dar permisos en tu navegador.';
+          setMessages(prev => [...prev, { id: Date.now() + 1, text: errorMsg, sender: 'bot' }]);
+          speakMessage(errorMsg, false);
+        }
+      );
+    } else {
+      const botResponse = 'Entendido. Si necesitas algo más, aquí estaré.';
+      setMessages(prev => [...prev, { id: Date.now() + 1, text: botResponse, sender: 'bot' }]);
+      speakMessage(botResponse, false);
+    }
+  };
+
   const handleSend = (e) => {
     e.preventDefault();
     sendMessage(inputValue);
   };
 
   return (
-    <>
+    <div className="flex flex-col h-full w-full relative">
       {!hasInteracted && (
         <div className="absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center">
           <motion.div 
@@ -331,7 +395,7 @@ const ChatInterface = ({ onChecklistUpdate }) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 md:p-6 pb-48 space-y-4 md:space-y-6 scroll-smooth">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 md:space-y-6 scroll-smooth">
         <AnimatePresence initial={false}>
           {messages.map((msg) => (
             <motion.div
@@ -341,7 +405,7 @@ const ChatInterface = ({ onChecklistUpdate }) => {
               className={`w-full flex justify-center`}
             >
               <div className={`flex gap-2 md:gap-4 w-full max-w-5xl ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-1 md:mt-0 ${
+                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full shrink-0 flex items-center justify-center mt-1 md:mt-0 ${
                   msg.sender === 'user' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-emerald-400'
                 }`}>
                   {msg.sender === 'user' ? <User size={20} /> : <Bot size={20} />}
@@ -361,6 +425,39 @@ const ChatInterface = ({ onChecklistUpdate }) => {
                       <br />
                     </span>
                   ))}
+                  
+                  {/* CHOICE CHIPS PARA HOSPITALES */}
+                  {msg.sender === 'bot' && msg.datos_hospitales && msg.datos_hospitales.length > 0 && !msg.hideChips && (
+                    <div className="mt-4 flex flex-wrap gap-2 pointer-events-auto">
+                      {msg.datos_hospitales.map((h, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleSeleccionarHospital(msg.id, h)}
+                          className="bg-slate-800 hover:bg-emerald-600/80 border border-emerald-500/30 text-emerald-300 hover:text-white px-4 py-2 rounded-full text-sm font-medium transition-all shadow-md active:scale-95"
+                        >
+                          {h.hospital}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* CHOICE CHIPS PARA RUTA */}
+                  {msg.sender === 'bot' && msg.routeOptions && !msg.hideChips && (
+                    <div className="mt-4 flex flex-wrap gap-2 pointer-events-auto">
+                      <button
+                        onClick={() => handleAceptarRuta(msg, true)}
+                        className="bg-blue-600/20 hover:bg-blue-600/80 border border-blue-500/50 text-blue-300 hover:text-white px-4 py-2 rounded-full text-sm font-medium transition-all shadow-md active:scale-95 flex items-center gap-2"
+                      >
+                        📍 Sí, usar mi ubicación
+                      </button>
+                      <button
+                        onClick={() => handleAceptarRuta(msg, false)}
+                        className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-4 py-2 rounded-full text-sm font-medium transition-all shadow-md active:scale-95"
+                      >
+                        No, gracias
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -372,7 +469,7 @@ const ChatInterface = ({ onChecklistUpdate }) => {
               className="w-full flex justify-center"
             >
               <div className="flex gap-2 md:gap-4 w-full max-w-5xl">
-                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center flex-shrink-0 mt-1 md:mt-0">
+                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center shrink-0 mt-1 md:mt-0">
                   <Bot size={20} />
                 </div>
                 <div className="p-4 rounded-2xl bg-transparent text-slate-200 flex items-center gap-3">
@@ -386,11 +483,11 @@ const ChatInterface = ({ onChecklistUpdate }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Panel Inferior Flotante */}
-      <div className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-30 w-full px-4 md:px-0 pointer-events-none">
+      {/* Panel Inferior Fijo */}
+      <div className="w-full flex flex-col items-center gap-2 px-4 pb-4 md:pb-8 shrink-0 pointer-events-none">
         
         {isRecording && (
-          <span className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-blue-400 animate-pulse pointer-events-none mb-1">
+          <span className="text-sm font-medium text-transparent bg-clip-text bg-linear-to-r from-emerald-400 via-teal-400 to-blue-400 animate-pulse pointer-events-none mb-1">
             Escuchando tus síntomas...
           </span>
         )}
@@ -407,9 +504,9 @@ const ChatInterface = ({ onChecklistUpdate }) => {
             <button
               type="button"
               onClick={toggleRecording}
-              className={`ml-2 p-2.5 md:p-3 rounded-full transition-colors flex-shrink-0 ${
+              className={`ml-2 p-2.5 md:p-3 rounded-full transition-colors shrink-0 ${
                 isRecording 
-                  ? 'text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/30' 
+                  ? 'text-white bg-linear-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/30' 
                   : 'text-slate-400 hover:text-emerald-400 hover:bg-slate-700/50'
               }`}
               title={isRecording ? "Detener" : "Hablar por micrófono"}
@@ -433,12 +530,12 @@ const ChatInterface = ({ onChecklistUpdate }) => {
               disabled={!inputValue.trim() || isLoading}
               className="absolute right-2 p-2 bg-emerald-500/20 text-emerald-400 rounded-full hover:bg-emerald-500 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Send size={18} className="translate-x-[1px] translate-y-[1px]" />
+              <Send size={18} className="translate-x-px translate-y-px" />
             </button>
           </div>
         </form>
       </div>
-    </>
+    </div>
   );
 };
 

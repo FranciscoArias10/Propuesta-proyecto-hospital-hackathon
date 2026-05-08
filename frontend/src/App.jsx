@@ -1,15 +1,30 @@
 import React, { useState } from 'react';
 import ChatInterface from './components/ChatInterface';
-import { Stethoscope, ShieldCheck, CreditCard, Building } from 'lucide-react';
+import HospitalMap from './components/HospitalMap';
+import { Stethoscope, ShieldCheck, CreditCard, Building, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 function App() {
   const [checklistData, setChecklistData] = useState(null);
+  const [hospitales, setHospitales] = useState([]);
+  const [userLocation, setUserLocation] = useState(null);
+  const [targetHospital, setTargetHospital] = useState(null);
 
   const updateChecklist = (newChecklist) => {
     if (newChecklist) {
       setChecklistData(newChecklist);
     }
+  };
+
+  const updateHospitales = (data) => {
+    if (data && data.length > 0) {
+      setHospitales(data);
+    }
+  };
+
+  const handleRutaSolicitada = (loc, hosp) => {
+    setUserLocation(loc);
+    setTargetHospital(hosp);
   };
 
   return (
@@ -26,11 +41,22 @@ function App() {
           
           {/* Chat Interface */}
           <div className="flex-1 relative flex flex-col min-h-0">
-            <ChatInterface onChecklistUpdate={updateChecklist} />
+            <ChatInterface 
+              onChecklistUpdate={updateChecklist} 
+              onHospitalesUpdate={updateHospitales}
+              onRutaSolicitada={handleRutaSolicitada}
+            />
           </div>
 
           {/* Floating Draggable Checklist */}
           <AnimateChecklist checklistData={checklistData} />
+          
+          {/* Floating Draggable Map */}
+          <FloatingMap 
+            hospitales={hospitales} 
+            userLocation={userLocation} 
+            targetHospital={targetHospital} 
+          />
 
         </div>
 
@@ -38,6 +64,36 @@ function App() {
     </div>
   );
 }
+
+const FloatingMap = ({ hospitales, userLocation, targetHospital }) => {
+  if (!hospitales || hospitales.length === 0) return null;
+
+  return (
+    <motion.div 
+      drag
+      dragMomentum={false}
+      initial={{ opacity: 0, scale: 0.9, x: -20, y: 20 }}
+      animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+      className="absolute bottom-4 left-4 md:left-8 z-40 w-80 md:w-96 bg-slate-900/90 backdrop-blur-xl border border-blue-500/40 rounded-2xl shadow-2xl shadow-blue-900/40 cursor-grab active:cursor-grabbing p-2"
+      style={{ touchAction: "none" }}
+    >
+      <div className="w-full h-6 flex items-center justify-center mb-1 opacity-60 hover:opacity-100 transition-opacity">
+        <div className="w-12 h-1.5 bg-slate-500 rounded-full" />
+      </div>
+      <h3 className="text-sm font-semibold text-white px-2 mb-2 flex items-center gap-2 select-none">
+        <MapPin size={16} className="text-blue-400" />
+        Red de Hospitales Cercanos
+      </h3>
+      <div className="pointer-events-auto cursor-auto">
+        <HospitalMap 
+          hospitales={hospitales} 
+          userLocation={userLocation} 
+          targetHospital={targetHospital} 
+        />
+      </div>
+    </motion.div>
+  );
+};
 
 const AnimateChecklist = ({ checklistData }) => {
   if (!checklistData) return null;
