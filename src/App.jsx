@@ -20,33 +20,22 @@ function App() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-900/20 rounded-full blur-[120px]" />
       </div>
 
-      <div className="relative z-10 container mx-auto p-4 md:p-8 h-screen flex flex-col md:flex-row gap-8">
+      <div className="relative z-10 container mx-auto p-4 md:p-8 h-screen flex justify-center items-center">
         
-        {/* Left Column: Context / Info */}
-        <div className="md:w-[400px] flex flex-col justify-center gap-8">
+        <div className="w-full max-w-4xl flex flex-col h-[90vh]">
+          {/* Header */}
           <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-4"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-6"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-sm font-medium">
-              <ShieldCheck size={16} />
-              <span>Transparencia Médica</span>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white leading-tight">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-2">
               Estimador de <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">Copago y Cobertura</span>
             </h1>
-            <p className="text-slate-400 text-lg">
-              Conoce cuánto vas a pagar antes de atenderte. Ingresa tu síntoma y nuestra IA cruzará datos con tu plan para darte la mejor opción.
-            </p>
+            <p className="text-slate-400">Conoce cuánto vas a pagar antes de atenderte.</p>
           </motion.div>
 
-          <AnimateChecklist checklistData={checklistData} />
-
-        </div>
-
-        {/* Right Column: Chat Interface */}
-        <div className="flex-1 flex flex-col h-full py-4 md:py-8">
+          {/* Centered Chat Interface */}
           <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-3xl backdrop-blur-xl shadow-2xl shadow-emerald-900/10 overflow-hidden relative flex flex-col">
             <ChatInterface onChecklistUpdate={updateChecklist} />
           </div>

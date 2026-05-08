@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Mic, Volume2, VolumeX, Settings2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, Mic, Volume2, VolumeX, Settings2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ChatInterface = ({ onChecklistUpdate }) => {
@@ -234,7 +234,18 @@ const ChatInterface = ({ onChecklistUpdate }) => {
         </div>
         
         <div className="flex items-center gap-1">
-          <div className="relative">
+          {/* Emergency Button */}
+          <button 
+            onClick={() => alert("🚨 Llamando a Emergencias (911)... Por favor mantén la calma.")}
+            className="flex items-center gap-2 bg-red-600/90 hover:bg-red-500 text-white px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold shadow-lg shadow-red-600/20 transition-all mr-2"
+            title="Emergencia 911"
+          >
+            <AlertTriangle size={18} className="animate-pulse" />
+            <span className="text-sm md:text-base hidden sm:inline">EMERGENCIA</span>
+          </button>
+
+          <div className="flex items-center gap-1 border-l border-slate-700 pl-2">
+            <div className="relative">
             <button 
               onClick={() => setShowSettings(!showSettings)}
               className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-full transition-colors"
