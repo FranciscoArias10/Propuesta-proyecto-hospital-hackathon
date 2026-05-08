@@ -18,6 +18,11 @@ const ChatInterface = ({ onChecklistUpdate }) => {
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const transcriptRef = useRef("");
+  const latestSettingsRef = useRef({ voiceEnabled: true, selectedVoiceURI: "", voices: [] });
+
+  useEffect(() => {
+    latestSettingsRef.current = { voiceEnabled, selectedVoiceURI, voices };
+  }, [voiceEnabled, selectedVoiceURI, voices]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -96,12 +101,13 @@ const ChatInterface = ({ onChecklistUpdate }) => {
   };
 
   const speakMessage = (text, shouldAutoStartMic = true) => {
-    if (!voiceEnabled || !window.speechSynthesis) return;
+    const settings = latestSettingsRef.current;
+    if (!settings.voiceEnabled || !window.speechSynthesis) return;
     window.speechSynthesis.cancel(); // Cancel previous speech
     const utterance = new SpeechSynthesisUtterance(text);
     
-    if (selectedVoiceURI) {
-      const voice = voices.find(v => v.voiceURI === selectedVoiceURI);
+    if (settings.selectedVoiceURI) {
+      const voice = settings.voices.find(v => v.voiceURI === settings.selectedVoiceURI);
       if (voice) utterance.voice = voice;
     } else {
       utterance.lang = 'es-ES';
@@ -112,7 +118,7 @@ const ChatInterface = ({ onChecklistUpdate }) => {
     
     // Auto-activar el micrófono cuando termine de hablar, a menos que sea el final
     utterance.onend = () => {
-      if (voiceEnabled && shouldAutoStartMic) {
+      if (latestSettingsRef.current.voiceEnabled && shouldAutoStartMic) {
         startRecording();
       }
     };
