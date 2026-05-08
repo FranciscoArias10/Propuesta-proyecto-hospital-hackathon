@@ -370,46 +370,47 @@ const ChatInterface = ({ onChecklistUpdate }) => {
       </div>
 
       {/* Panel Inferior Flotante */}
-      <div className="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 md:gap-4 z-30 w-full px-4 md:px-0 pointer-events-none">
-        {/* Big Mic Button */}
-        <div className="relative flex flex-col items-center pointer-events-auto">
-          <button
-            type="button"
-            onClick={toggleRecording}
-            className={`relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-full transition-all duration-300 shadow-2xl ${
-              isRecording 
-                ? 'bg-red-500 text-white scale-110 shadow-red-500/50' 
-                : 'bg-emerald-500 text-white hover:bg-emerald-400 hover:scale-105 shadow-emerald-500/50'
-            }`}
-            title={isRecording ? "Detener" : "Hablar"}
-          >
-            {isRecording && (
-              <>
-                <span className="absolute inset-0 rounded-full border-4 border-red-400 animate-ping opacity-75"></span>
-                <span className="absolute inset-[-20px] rounded-full border-2 border-red-500/30 animate-pulse"></span>
-              </>
-            )}
-            <Mic size={36} className={isRecording ? 'animate-bounce' : ''} />
-          </button>
-          
-          <div className="mt-3 bg-slate-900/60 backdrop-blur-sm px-4 py-1 rounded-full border border-slate-700/50">
-            <span className={`text-xs font-medium transition-colors ${isRecording ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
-              {isRecording ? "Escuchando tus síntomas..." : "Toca el micrófono para hablar"}
-            </span>
-          </div>
-        </div>
+      <div className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-30 w-full px-4 md:px-0 pointer-events-none">
+        
+        {isRecording && (
+          <span className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-blue-400 animate-pulse pointer-events-none mb-1">
+            Escuchando tus síntomas...
+          </span>
+        )}
 
-        {/* Text Input (Secondary) */}
-        <form onSubmit={handleSend} className="w-full max-w-lg relative flex items-center opacity-90 hover:opacity-100 transition-opacity pointer-events-auto">
-          <div className="w-full bg-slate-800/90 backdrop-blur-xl border border-slate-600/50 rounded-full flex items-center shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+        {/* Text Input con Micrófono Integrado */}
+        <form onSubmit={handleSend} className="w-full max-w-3xl relative flex items-center transition-all pointer-events-auto">
+          <div className={`w-full bg-slate-800/95 backdrop-blur-xl rounded-full flex items-center shadow-[0_10px_40px_rgba(0,0,0,0.6)] transition-all duration-300 ${
+            isRecording 
+              ? 'border-2 border-emerald-500 shadow-[0_0_30px_rgba(52,211,153,0.3)]' 
+              : 'border border-slate-600/50 focus-within:border-emerald-500/50'
+          }`}>
+            
+            {/* Botón de Micrófono */}
+            <button
+              type="button"
+              onClick={toggleRecording}
+              className={`ml-2 p-2.5 md:p-3 rounded-full transition-colors flex-shrink-0 ${
+                isRecording 
+                  ? 'text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/30' 
+                  : 'text-slate-400 hover:text-emerald-400 hover:bg-slate-700/50'
+              }`}
+              title={isRecording ? "Detener" : "Hablar por micrófono"}
+            >
+              <Mic size={22} className={isRecording ? 'animate-pulse' : ''} />
+            </button>
+
+            {/* Input de Texto */}
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="O escribe tu síntoma aquí..."
-              className="w-full bg-transparent pl-6 pr-14 py-3.5 md:py-4 text-sm text-white focus:outline-none placeholder:text-slate-400"
+              placeholder={isRecording ? "Habla ahora..." : "Escribe tu síntoma o toca el micrófono..."}
+              className="w-full bg-transparent pl-3 pr-14 py-3.5 md:py-4 text-sm md:text-base text-white focus:outline-none placeholder:text-slate-400"
               disabled={isLoading || isRecording}
             />
+            
+            {/* Botón de Enviar */}
             <button
               type="submit"
               disabled={!inputValue.trim() || isLoading}
