@@ -308,35 +308,37 @@ const ChatInterface = ({ onChecklistUpdate }) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
+      <div className="flex-1 overflow-y-auto p-6 pb-48 space-y-6 scroll-smooth">
         <AnimatePresence initial={false}>
           {messages.map((msg) => (
             <motion.div
               key={msg.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 max-w-[85%] ${msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
+              className={`w-full flex justify-center`}
             >
-              <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
-                msg.sender === 'user' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-emerald-400'
-              }`}>
-                {msg.sender === 'user' ? <User size={16} /> : <Bot size={16} />}
-              </div>
-              
-              <div
-                className={`p-4 rounded-2xl text-sm md:text-base leading-relaxed ${
-                  msg.sender === 'user'
-                    ? 'bg-emerald-600 text-white rounded-tr-sm'
-                    : 'bg-slate-800 text-slate-200 rounded-tl-sm border border-slate-700/50'
-                }`}
-              >
-                {/* Renderizamos el texto de manera que respete los saltos de línea */}
-                {msg.text.split('\n').map((line, i) => (
-                  <span key={i}>
-                    {line}
-                    <br />
-                  </span>
-                ))}
+              <div className={`flex gap-4 w-full max-w-5xl ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
+                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex-shrink-0 flex items-center justify-center ${
+                  msg.sender === 'user' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-emerald-400'
+                }`}>
+                  {msg.sender === 'user' ? <User size={20} /> : <Bot size={20} />}
+                </div>
+                
+                <div
+                  className={`p-5 rounded-2xl text-sm md:text-base leading-relaxed shadow-sm flex-1 ${
+                    msg.sender === 'user'
+                      ? 'bg-slate-800/40 text-slate-200 rounded-tr-sm border border-slate-700/30'
+                      : 'bg-transparent text-slate-200'
+                  }`}
+                >
+                  {/* Renderizamos el texto de manera que respete los saltos de línea */}
+                  {msg.text.split('\n').map((line, i) => (
+                    <span key={i}>
+                      {line}
+                      <br />
+                    </span>
+                  ))}
+                </div>
               </div>
             </motion.div>
           ))}
@@ -344,14 +346,16 @@ const ChatInterface = ({ onChecklistUpdate }) => {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex gap-3 max-w-[85%]"
+              className="w-full flex justify-center"
             >
-              <div className="w-8 h-8 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center">
-                <Bot size={16} />
-              </div>
-              <div className="p-4 rounded-2xl bg-slate-800 text-slate-200 rounded-tl-sm border border-slate-700/50 flex items-center gap-2">
-                <Loader2 size={16} className="animate-spin text-emerald-400" />
-                <span className="text-sm text-slate-400">Calculando cobertura...</span>
+              <div className="flex gap-4 w-full max-w-5xl">
+                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                  <Bot size={20} />
+                </div>
+                <div className="p-4 rounded-2xl bg-transparent text-slate-200 flex items-center gap-3">
+                  <Loader2 size={18} className="animate-spin text-emerald-400" />
+                  <span className="text-sm md:text-base text-slate-400">Analizando cobertura y opciones...</span>
+                </div>
               </div>
             </motion.div>
           )}
@@ -359,16 +363,17 @@ const ChatInterface = ({ onChecklistUpdate }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-6 flex flex-col items-center gap-4 relative z-20 shrink-0">
+      {/* Panel Inferior Flotante */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 z-30 w-full px-4 md:px-0 pointer-events-none">
         {/* Big Mic Button */}
-        <div className="relative flex flex-col items-center">
+        <div className="relative flex flex-col items-center pointer-events-auto">
           <button
             type="button"
             onClick={toggleRecording}
-            className={`relative flex items-center justify-center w-24 h-24 rounded-full transition-all duration-300 shadow-2xl ${
+            className={`relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-full transition-all duration-300 shadow-2xl ${
               isRecording 
                 ? 'bg-red-500 text-white scale-110 shadow-red-500/50' 
-                : 'bg-emerald-500 text-white hover:bg-emerald-400 hover:scale-105 shadow-emerald-500/30'
+                : 'bg-emerald-500 text-white hover:bg-emerald-400 hover:scale-105 shadow-emerald-500/50'
             }`}
             title={isRecording ? "Detener" : "Hablar"}
           >
@@ -378,30 +383,35 @@ const ChatInterface = ({ onChecklistUpdate }) => {
                 <span className="absolute inset-[-20px] rounded-full border-2 border-red-500/30 animate-pulse"></span>
               </>
             )}
-            <Mic size={40} className={isRecording ? 'animate-bounce' : ''} />
+            <Mic size={36} className={isRecording ? 'animate-bounce' : ''} />
           </button>
-          <span className={`mt-3 text-sm font-medium transition-colors ${isRecording ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
-            {isRecording ? "Escuchando tus síntomas..." : "Toca el micrófono para hablar"}
-          </span>
+          
+          <div className="mt-3 bg-slate-900/60 backdrop-blur-sm px-4 py-1 rounded-full border border-slate-700/50">
+            <span className={`text-xs font-medium transition-colors ${isRecording ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
+              {isRecording ? "Escuchando tus síntomas..." : "Toca el micrófono para hablar"}
+            </span>
+          </div>
         </div>
 
         {/* Text Input (Secondary) */}
-        <form onSubmit={handleSend} className="w-full max-w-lg relative flex items-center mt-2 opacity-80 hover:opacity-100 transition-opacity">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="O si prefieres, escribe tu síntoma aquí..."
-            className="w-full bg-slate-800/80 border border-slate-700/80 rounded-full pl-5 pr-14 py-3 text-sm text-white focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 outline-none transition-all placeholder:text-slate-500"
-            disabled={isLoading || isRecording}
-          />
-          <button
-            type="submit"
-            disabled={!inputValue.trim() || isLoading}
-            className="absolute right-1.5 p-2 bg-emerald-500/20 text-emerald-400 rounded-full hover:bg-emerald-500 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Send size={16} className="translate-x-[1px] translate-y-[1px]" />
-          </button>
+        <form onSubmit={handleSend} className="w-full max-w-lg relative flex items-center opacity-90 hover:opacity-100 transition-opacity pointer-events-auto">
+          <div className="w-full bg-slate-800/90 backdrop-blur-xl border border-slate-600/50 rounded-full flex items-center shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="O escribe tu síntoma aquí..."
+              className="w-full bg-transparent pl-6 pr-14 py-3.5 md:py-4 text-sm text-white focus:outline-none placeholder:text-slate-400"
+              disabled={isLoading || isRecording}
+            />
+            <button
+              type="submit"
+              disabled={!inputValue.trim() || isLoading}
+              className="absolute right-2 p-2 bg-emerald-500/20 text-emerald-400 rounded-full hover:bg-emerald-500 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Send size={18} className="translate-x-[1px] translate-y-[1px]" />
+            </button>
+          </div>
         </form>
       </div>
     </>
