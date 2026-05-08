@@ -347,39 +347,51 @@ const ChatInterface = ({ onChecklistUpdate }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSend} className="p-4 bg-slate-900 border-t border-slate-800">
-        <div className="relative flex items-center">
+      <div className="p-6 bg-slate-900 border-t border-slate-800 flex flex-col items-center gap-4 relative z-20 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.5)]">
+        {/* Big Mic Button */}
+        <div className="relative flex flex-col items-center">
+          <button
+            type="button"
+            onClick={toggleRecording}
+            className={`relative flex items-center justify-center w-24 h-24 rounded-full transition-all duration-300 shadow-2xl ${
+              isRecording 
+                ? 'bg-red-500 text-white scale-110 shadow-red-500/50' 
+                : 'bg-emerald-500 text-white hover:bg-emerald-400 hover:scale-105 shadow-emerald-500/30'
+            }`}
+            title={isRecording ? "Detener" : "Hablar"}
+          >
+            {isRecording && (
+              <>
+                <span className="absolute inset-0 rounded-full border-4 border-red-400 animate-ping opacity-75"></span>
+                <span className="absolute inset-[-20px] rounded-full border-2 border-red-500/30 animate-pulse"></span>
+              </>
+            )}
+            <Mic size={40} className={isRecording ? 'animate-bounce' : ''} />
+          </button>
+          <span className={`mt-3 text-sm font-medium transition-colors ${isRecording ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
+            {isRecording ? "Escuchando tus síntomas..." : "Toca el micrófono para hablar"}
+          </span>
+        </div>
+
+        {/* Text Input (Secondary) */}
+        <form onSubmit={handleSend} className="w-full max-w-lg relative flex items-center mt-2 opacity-80 hover:opacity-100 transition-opacity">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ej: Tengo dolor en el pecho..."
-            className="w-full bg-slate-800 border border-slate-700 rounded-full pl-6 pr-24 py-4 text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all placeholder:text-slate-500"
+            placeholder="O si prefieres, escribe tu síntoma aquí..."
+            className="w-full bg-slate-800/80 border border-slate-700/80 rounded-full pl-5 pr-14 py-3 text-sm text-white focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 outline-none transition-all placeholder:text-slate-500"
             disabled={isLoading || isRecording}
           />
-          <div className="absolute right-2 flex items-center gap-1">
-            <button
-              type="button"
-              onClick={toggleRecording}
-              className={`p-2.5 rounded-full transition-all ${
-                isRecording 
-                  ? 'bg-red-500/20 text-red-400 animate-pulse' 
-                  : 'text-slate-400 hover:text-emerald-400 hover:bg-slate-800'
-              }`}
-              title="Hablar"
-            >
-              <Mic size={20} />
-            </button>
-            <button
-              type="submit"
-              disabled={!inputValue.trim() || isLoading}
-              className="p-2.5 bg-emerald-500 text-white rounded-full hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Send size={18} className="translate-x-[-1px] translate-y-[1px]" />
-            </button>
-          </div>
-        </div>
-      </form>
+          <button
+            type="submit"
+            disabled={!inputValue.trim() || isLoading}
+            className="absolute right-1.5 p-2 bg-emerald-500/20 text-emerald-400 rounded-full hover:bg-emerald-500 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Send size={16} className="translate-x-[1px] translate-y-[1px]" />
+          </button>
+        </form>
+      </div>
     </>
   );
 };
