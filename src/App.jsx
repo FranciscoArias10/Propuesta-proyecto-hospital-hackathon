@@ -22,20 +22,8 @@ function App() {
 
       <div className="relative z-10 w-full h-screen flex flex-col overflow-hidden">
         
-        {/* Header Global */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center pt-8 pb-2 z-20 relative shrink-0"
-        >
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-1">
-            Estimador de <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">Copago y Cobertura</span>
-          </h1>
-          <p className="text-slate-400 text-sm">Conoce cuánto vas a pagar antes de atenderte.</p>
-        </motion.div>
-
         {/* Fullscreen Chat Interface sin caja */}
-        <div className="flex-1 w-full max-w-5xl mx-auto relative flex flex-col min-h-0">
+        <div className="flex-1 w-full relative flex flex-col min-h-0">
           <ChatInterface onChecklistUpdate={updateChecklist} />
         </div>
 

@@ -308,7 +308,7 @@ const ChatInterface = ({ onChecklistUpdate }) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 pb-48 space-y-6 scroll-smooth">
+      <div className="flex-1 overflow-y-auto p-3 md:p-6 pb-48 space-y-4 md:space-y-6 scroll-smooth">
         <AnimatePresence initial={false}>
           {messages.map((msg) => (
             <motion.div
@@ -317,15 +317,15 @@ const ChatInterface = ({ onChecklistUpdate }) => {
               animate={{ opacity: 1, y: 0 }}
               className={`w-full flex justify-center`}
             >
-              <div className={`flex gap-4 w-full max-w-5xl ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex-shrink-0 flex items-center justify-center ${
+              <div className={`flex gap-2 md:gap-4 w-full max-w-5xl ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
+                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-1 md:mt-0 ${
                   msg.sender === 'user' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-emerald-400'
                 }`}>
                   {msg.sender === 'user' ? <User size={20} /> : <Bot size={20} />}
                 </div>
                 
                 <div
-                  className={`p-5 rounded-2xl text-sm md:text-base leading-relaxed shadow-sm flex-1 ${
+                  className={`p-3 md:p-5 rounded-2xl text-sm md:text-base leading-relaxed shadow-sm flex-1 ${
                     msg.sender === 'user'
                       ? 'bg-slate-800/40 text-slate-200 rounded-tr-sm border border-slate-700/30'
                       : 'bg-transparent text-slate-200'
@@ -348,8 +348,8 @@ const ChatInterface = ({ onChecklistUpdate }) => {
               animate={{ opacity: 1, y: 0 }}
               className="w-full flex justify-center"
             >
-              <div className="flex gap-4 w-full max-w-5xl">
-                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center flex-shrink-0">
+              <div className="flex gap-2 md:gap-4 w-full max-w-5xl">
+                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center flex-shrink-0 mt-1 md:mt-0">
                   <Bot size={20} />
                 </div>
                 <div className="p-4 rounded-2xl bg-transparent text-slate-200 flex items-center gap-3">
@@ -364,7 +364,7 @@ const ChatInterface = ({ onChecklistUpdate }) => {
       </div>
 
       {/* Panel Inferior Flotante */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 z-30 w-full px-4 md:px-0 pointer-events-none">
+      <div className="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 md:gap-4 z-30 w-full px-4 md:px-0 pointer-events-none">
         {/* Big Mic Button */}
         <div className="relative flex flex-col items-center pointer-events-auto">
           <button
