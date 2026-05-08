@@ -20,25 +20,23 @@ function App() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-900/20 rounded-full blur-[120px]" />
       </div>
 
-      <div className="relative z-10 container mx-auto p-4 md:p-8 h-screen flex justify-center items-center">
+      <div className="relative z-10 w-full h-screen flex flex-col overflow-hidden">
         
-        <div className="w-full max-w-4xl flex flex-col h-[90vh]">
-          {/* Header */}
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-6"
-          >
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-2">
-              Estimador de <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">Copago y Cobertura</span>
-            </h1>
-            <p className="text-slate-400">Conoce cuánto vas a pagar antes de atenderte.</p>
-          </motion.div>
+        {/* Header Global */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center pt-8 pb-2 z-20 relative shrink-0"
+        >
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-1">
+            Estimador de <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">Copago y Cobertura</span>
+          </h1>
+          <p className="text-slate-400 text-sm">Conoce cuánto vas a pagar antes de atenderte.</p>
+        </motion.div>
 
-          {/* Centered Chat Interface */}
-          <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-3xl backdrop-blur-xl shadow-2xl shadow-emerald-900/10 overflow-hidden relative flex flex-col">
-            <ChatInterface onChecklistUpdate={updateChecklist} />
-          </div>
+        {/* Fullscreen Chat Interface sin caja */}
+        <div className="flex-1 w-full max-w-5xl mx-auto relative flex flex-col min-h-0">
+          <ChatInterface onChecklistUpdate={updateChecklist} />
         </div>
 
       </div>

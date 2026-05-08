@@ -219,7 +219,7 @@ const ChatInterface = ({ onChecklistUpdate }) => {
         </div>
       )}
 
-      <div className="p-5 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between gap-3 relative z-10">
+      <div className="p-4 flex items-center justify-between gap-3 relative z-10 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
             <Bot size={24} />
@@ -304,6 +304,7 @@ const ChatInterface = ({ onChecklistUpdate }) => {
           >
             {voiceEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
           </button>
+          </div>
         </div>
       </div>
 
@@ -358,7 +359,7 @@ const ChatInterface = ({ onChecklistUpdate }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-6 bg-slate-900 border-t border-slate-800 flex flex-col items-center gap-4 relative z-20 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.5)]">
+      <div className="p-6 flex flex-col items-center gap-4 relative z-20 shrink-0">
         {/* Big Mic Button */}
         <div className="relative flex flex-col items-center">
           <button
