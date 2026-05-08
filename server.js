@@ -5,8 +5,8 @@ import dotenv from 'dotenv';
 import {
   obtenerAnalisisMedico,
   detectarEspecialidadConIA,
-  detectarEmergenciaVital,
-  esConsultaMedica,              // ← Filtro de entrada (Paso 0)
+  esEmergenciaVital,             // ← Detector de emergencia por IA (sin palabras clave)
+  esConsultaMedica,              // ← Filtro de entrada
 } from './backend/services/aiService.js';
 import { obtenerHospitalesPorEspecialidad } from './backend/services/notionService.js';
 import { calcularCopagoExacto } from './backend/utils/calculator.js';
@@ -21,69 +21,54 @@ app.use(express.json());
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/chat
-// Respuesta SIEMPRE estructurada con los campos:
-//   is_emergency  → boolean  (true = el frontend debe mostrar el botón del 911)
-//   is_fallback   → boolean  (true = se muestran hospitales de Medicina General)
-//   especialidad  → string
-//   datos_hospitales → array
-//   response      → string   (texto del agente)
-//   checklist     → object | null
+// La respuesta SIEMPRE incluye ambos:
+//   is_emergency     → boolean  (IA decide si hay emergencia vital)
+//   datos_hospitales → array    (siempre se consulta Notion, haya emergencia o no)
+// Los dos sistemas trabajan en paralelo y no se bloquean entre sí.
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   try {
     const { message } = req.body;
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
-    // ── PASO 0: Filtro de entrada ─ ¿es una consulta médica real? ─────────────────────
-    // Si el mensaje no describe un malestar/síntoma, cortocircuitamos aquí.
-    // No llamamos a Notion, no calculamos copagos, no gastamos tokens en el
-    // modelo principal. Solo devolvemos una respuesta educada.
+    // ── PASO 0: Filtro de entrada — ¿es una consulta médica real? ─────────────
     const esMedico = await esConsultaMedica(message);
     if (!esMedico) {
       console.log('[FILTRO] Mensaje rechazado: no contiene síntoma médico.');
       return res.json({
-        is_emergency:    false,
-        is_fallback:     false,
-        is_invalid:      true,
-        especialidad:    null,
+        is_emergency:     false,
+        is_fallback:      false,
+        is_invalid:       true,
+        especialidad:     null,
         datos_hospitales: [],
-        response:        'Lo siento, no logro identificar un síntoma médico en tu mensaje. Por favor, descríbeme qué malestar, dolor o síntoma estás experimentando para poder orientarte con tu cobertura.',
-        checklist:       null,
+        response:         'Lo siento, no logro identificar un síntoma médico en tu mensaje. Por favor, descríbeme qué malestar, dolor o síntoma estás experimentando para poder orientarte con tu cobertura.',
+        checklist:        null,
       });
     }
 
-    // ── PASO 1: Detectar si es emergencia vital ──────────────────────────────
-    // Si lo es, cortocircuitamos: NO consultamos Notion, NO calculamos copagos.
-    // Solo devolvemos el flag is_emergency: true para que el frontend (Paso 1)
-    // active el botón del 911 y la interfaz de alerta.
-    const alertaEmergencia = detectarEmergenciaVital(message);
-    if (alertaEmergencia) {
-      return res.json({
-        ...alertaEmergencia,
-        response: alertaEmergencia.mensaje,
-        checklist: null,
-      });
-    }
+    // ── PASO 1: Detección en paralelo — emergencia + especialidad ─────────────
+    // Las dos llamadas a la IA corren al MISMO TIEMPO.
+    // Una determina si hay riesgo vital; la otra identifica la especialidad.
+    // Son completamente independientes: nunca una bloquea a la otra.
+    const [esEmergencia, especialidad] = await Promise.all([
+      esEmergenciaVital(message),
+      detectarEspecialidadConIA(message),
+    ]);
 
-    // ── PASO 2: Flujo normal (no es emergencia) ──────────────────────────────
-
-    // 2a. Detectar especialidad con IA
-    const especialidad = await detectarEspecialidadConIA(message);
-
-    // 2b. Consultar hospitales en Notion (con fallback automático a Medicina General)
+    // ── PASO 2: Consultar hospitales en Notion (SIEMPRE, haya emergencia o no) ─
     const { hospitales, is_fallback } = await obtenerHospitalesPorEspecialidad(especialidad);
 
-    // 2c. Calcular copago exacto con validación de nulos
+    // ── PASO 3: Calcular copago exacto ─────────────────────────────────────────
     const datos_hospitales = hospitales.map((h) => ({
       ...h,
       copago: calcularCopagoExacto(h.costoBase, h.cobertura),
     }));
 
-    // 2d. Enviar mensaje + contexto al agente de IA
+    // ── PASO 4: Análisis completo del agente de IA ─────────────────────────────
     const contextoData = { especialidad, hospitales: datos_hospitales };
     const fullResponse = await obtenerAnalisisMedico(message, contextoData);
 
-    // 2e. Parsear el checklist embebido en la respuesta
+    // ── PASO 5: Parsear checklist embebido en la respuesta ─────────────────────
     let responseContent = fullResponse;
     let checklistData = null;
 
@@ -106,14 +91,14 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
-    // ── RESPUESTA ESTRUCTURADA FINAL ─────────────────────────────────────────
+    // ── RESPUESTA FINAL: hospitales + botón de emergencia juntos ───────────────
     res.json({
-      is_emergency:    false,
+      is_emergency:     esEmergencia,   // ← la IA decide, no palabras clave
       is_fallback,
       especialidad,
       datos_hospitales,
-      response:        responseContent,
-      checklist:       checklistData,
+      response:         responseContent,
+      checklist:        checklistData,
     });
 
   } catch (error) {

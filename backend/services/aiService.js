@@ -7,66 +7,52 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-// ─── PALABRAS CLAVE DE EMERGENCIA VITAL ──────────────────────────────────────
-// Esta lista cubre los síntomas más críticos. El frontend usará el flag
-// is_emergency: true para mostrar el botón del 911 (eso le toca al Paso 1).
-const SINTOMAS_EMERGENCIA = [
-  // Cardiovascular
-  'infarto', 'ataque al corazón', 'ataque cardiaco', 'dolor en el pecho',
-  'pecho opresivo', 'presión en el pecho',
-  // Respiratorio
-  'asfixia', 'no puedo respirar', 'sin respiración', 'ahogamiento',
-  'dificultad para respirar', 'falta de aire',
-  // Neurológico
-  'derrame', 'derrame cerebral', 'apoplejía', 'convulsión', 'convulsiones',
-  'pérdida de consciencia', 'perdí el conocimiento', 'desmayo repentino',
-  'no despierta', 'parálisis', 'cara caída', 'boca torcida',
-  // Hemorragia
-  'hemorragia', 'sangrado abundante', 'sangrado sin control', 'mucha sangre',
-  // Trauma grave
-  'accidente grave', 'atropellado', 'caída de altura', 'fractura expuesta',
-  // Alergias graves
-  'anafilaxis', 'reacción alérgica grave', 'garganta cerrada',
-  // Intoxicación
-  'intoxicación', 'envenenamiento', 'tomé pastillas', 'sobredosis',
-];
-
-const PRIMEROS_AUXILIOS_GENERALES = [
-  'Llama al 911 de inmediato.',
-  'Mantén la calma y permanece con el paciente.',
-  'No muevas a la persona si hay riesgo de lesión en columna.',
-  'No le des comida ni bebida.',
-  'Si no respira y sabes RCP, aplícalo hasta que llegue la ayuda.',
-  'Mantén libre la vía aérea.',
-];
-
 /**
- * Detecta si el mensaje del usuario contiene síntomas de emergencia vital.
- * Si detecta emergencia, devuelve el objeto de alerta listo para el frontend.
- * Si NO es emergencia, devuelve null y el flujo normal continúa.
- * @param {string} mensaje
- * @returns {{ is_emergency: true, mensaje: string, primeros_auxilios: string[], especialidad: string } | null}
+ * Agente IA que determina si el mensaje describe una emergencia médica vital.
+ * Usa el LLM directamente — sin palabras clave — para entender contexto,
+ * frases en tercera persona ("mi papá tiene..."), errores de ortografía, etc.
+ * Responde SI o NO con temperatura 0 para máximo determinismo.
+ * @param {string} mensajeUsuario
+ * @returns {Promise<boolean>} - true si es emergencia vital, false si no.
  */
-export function detectarEmergenciaVital(mensaje) {
-  const mensajeLower = mensaje.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const esEmergencia = SINTOMAS_EMERGENCIA.some(sintoma =>
-    mensajeLower.includes(sintoma.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
-  );
+export async function esEmergenciaVital(mensajeUsuario) {
+  const completion = await groq.chat.completions.create({
+    messages: [
+      {
+        role: 'system',
+        content: `Eres un detector de emergencias médicas vitales para un sistema hospitalario.
+Tu ÚNICA tarea es determinar si el mensaje describe una situación de riesgo vital
+inmediato que requiere llamar al 911 ahora mismo.
 
-  if (!esEmergencia) return null;
+Responde ÚNICAMENTE con "SI" o "NO", sin explicaciones ni puntuación adicional.
 
-  console.log('[EMERGENCIA] ⚠️  Síntoma de riesgo vital detectado. Activando protocolo de emergencia.');
+Responde "SI" si el mensaje describe (incluso con errores de ortografía o en tercera persona):
+- Paro cardíaco, infarto, ataque al corazón
+- Pérdida de consciencia, persona inconsciente, no responde, no despierta
+- Convulsiones activas
+- Dificultad severa para respirar, asfixia, persona que no respira
+- Derrame o hemorragia cerebral
+- Hemorragia grave incontrolable
+- Accidente grave, trauma severo
+- Sobredosis o envenenamiento grave
+- Reacción alérgica severa (anafilaxia)
 
-  return {
-    is_emergency: true,
-    is_fallback: false,
-    mensaje: '⚠️ ALERTA: Tus síntomas sugieren una posible emergencia médica grave. Llama al 911 de inmediato. No esperes.',
-    primeros_auxilios: PRIMEROS_AUXILIOS_GENERALES,
-    especialidad: 'Emergencia',
-    datos_hospitales: [],
-    // Flag para tu compañero del frontend (Paso 1):
-    // si is_emergency === true → muestra el botón rojo del 911 y la interfaz de alerta
-  };
+Responde "NO" en cualquier otro caso: síntomas leves, enfermedades comunes,
+dolores no urgentes, consultas de cobertura sin riesgo vital.
+
+Sé ESTRICTO con los falsos positivos: un dolor de cabeza común es NO.
+Solo marca SI cuando hay riesgo de muerte inminente.`,
+      },
+      { role: 'user', content: mensajeUsuario },
+    ],
+    model: 'llama-3.3-70b-versatile',
+    temperature: 0.0,
+    max_tokens: 5,
+  });
+
+  const respuesta = completion.choices[0]?.message?.content?.trim().toUpperCase() || 'NO';
+  console.log(`[EMERGENCIA] ¿Es emergencia vital? → ${respuesta}`);
+  return respuesta === 'SI';
 }
 
 // ─── SYSTEM PROMPT DEL AGENTE ─────────────────────────────────────────────────

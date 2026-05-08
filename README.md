@@ -1,20 +1,88 @@
-# React + Vite
+<div align="center">
+  <h1>🏥 Estimador Agéntico de Copago y Cobertura Médica</h1>
+  <p><i>Asistente inteligente con IA y voz para empoderar a los pacientes con transparencia médica.</i></p>
+</div>
 
-npm run server
-npm run dev
+<hr/>
 
+Este proyecto es un asistente interactivo diseñado para ayudar a los pacientes a entender los beneficios de su seguro y cuánto pagarán por su atención médica **antes** de agendar una cita. Utilizando Inteligencia Artificial y una interfaz conversacional, el sistema elimina la incertidumbre financiera en la salud.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## ✨ Características Principales
 
-Currently, two official plugins are available:
+- 🎙️ **Interacción por Voz:** Interfaz amigable que permite a los pacientes hablar de sus síntomas utilizando el micrófono, ideal para adultos mayores o usuarios menos familiarizados con la tecnología.
+- 🤖 **Análisis de Síntomas con IA:** El asistente entiende los malestares del paciente y recomienda la especialidad médica más adecuada.
+- 🛡️ **Simulación de Cobertura:** Cruza información con planes de seguro médico (IESS, aseguradoras privadas).
+- 🏥 **Comparativa de Opciones:** Sugiere diferentes hospitales o clínicas, mostrando el porcentaje de cobertura y un estimado del copago en dólares.
+- ✅ **Checklist Visual Dinámico:** Genera una lista en pantalla con los datos clave extraídos de la conversación (Especialidad, Mejor opción y Copago).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 🗺️ Flujo de Trabajo
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+A continuación se muestra cómo viaja la información desde que el usuario habla hasta que recibe su respuesta:
 
-## Expanding the ESLint configuration
+```mermaid
+graph TD
+    %% Estilos
+    classDef user fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
+    classDef frontend fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    classDef backend fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+    classDef ai fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
+    classDef result fill:#ec4899,stroke:#db2777,stroke-width:2px,color:#fff
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+    A(("🗣️ Paciente habla<br>sus síntomas")):::user -->|Reconocimiento de Voz| B["💻 Frontend (React + Vite)"]:::frontend
+    B -->|Envío de texto| C["⚙️ Backend (Express/Node.js)"]:::backend
+    C -->|Prompt Contextualizado| D["🧠 API de Groq (Llama 3)"]:::ai
+    
+    D --> E{"Análisis y Extracción"}:::ai
+    E -->|Identifica| F["🩺 Especialidad Médica"]:::result
+    E -->|Cruza datos| G["🏥 Opciones de Hospitales"]:::result
+    E -->|Calcula| H["💰 Cobertura y Copago"]:::result
+    
+    F --> I["✅ Checklist Dinámico"]:::frontend
+    G --> I
+    H --> I
+    
+    I --> J(("🔊 Respuesta en<br>Voz al Paciente")):::user
+```
+
+---
+
+## 🛠️ Tecnologías Utilizadas
+
+| Categoría | Tecnologías |
+| :--- | :--- |
+| **Frontend** | React, Vite, Tailwind CSS, Framer Motion, Lucide React |
+| **Backend** | Node.js, Express, dotenv, cors |
+| **Inteligencia Artificial** | Groq SDK (Modelo `llama-3.3-70b-versatile`) |
+| **Integraciones Nativas** | Web Speech API (Síntesis y Reconocimiento de Voz) |
+
+---
+
+## 🚀 Cómo ejecutar el proyecto localmente
+
+1. **Clona el repositorio** y entra a la carpeta del proyecto.
+2. **Instala las dependencias** necesarias:
+   ```bash
+   npm install
+   ```
+3. **Configura tus variables de entorno:**
+   Crea un archivo `.env` en la raíz del proyecto e incluye tu llave de Groq:
+   ```env
+   GROQ_API_KEY=tu_api_key_aqui
+   PORT=3001
+   ```
+4. **Inicia el proyecto (Frontend + Backend concurrentemente):**
+   ```bash
+   npm run dev
+   ```
+5. **Abre la aplicación:**
+   Navega a [http://localhost:5173/](http://localhost:5173/) en tu navegador preferido.
+
+---
+
+## 👥 Colaboradores
+
+- 📧 darlyfariasmendoza@gmail.com
+- 📧 fariasp2@unemi.edu.ec
+- 📧 odat2017@hotmail.com
