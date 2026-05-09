@@ -176,8 +176,8 @@ Desarrollado por tres personas comprometidas con la innovación en salud tecnol�
 
 | Rol | Nombre | Contacto |
 | :--- | :--- | :--- |
-| 👑 **Líder del Proyecto** | Oswaldo Danilo Angulo Tamayo | odat2017@hotmail.com |
-| 👨‍💻 **Desarrollador Frontend/Backend** | Darly Douglas Farias Mendoza | darlyfariasmendoza@gmail.com |
+| 👑 **Líder del Proyecto** | Oswaldo Danilo Angulo Tamayo | [LinkedIn](https://www.linkedin.com/in/oswaldo-angulo-b00823311/) · odat2017@hotmail.com |
+| 👨‍💻 **Desarrollador Frontend/Backend** | Darly Douglas Farias Mendoza | [LinkedIn](https://www.linkedin.com/in/darly-farias-574b0433a) · darlyfariasmendoza@gmail.com |
 | 👨‍💻 **Desarrollador Frontend/Backend** | Steven Francisco Arias Pérez | [LinkedIn](https://www.linkedin.com/in/francisco-steven-arias-p%C3%A9rez-5b8663219/) · fariasp2@unemi.edu.ec |
 
 ---
