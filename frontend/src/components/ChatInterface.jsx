@@ -2,9 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Mic, Volume2, VolumeX, Settings2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada }) => {
+const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada, onHospitalSelected, onEspecialidadUpdate, tipoSeguro, onCambiarSeguro }) => {
+  const saludoInicial = tipoSeguro
+    ? `¡Hola! Soy tu Estimador Agentico. Veo que tienes un seguro de ${tipoSeguro.titulo}. ¿Que malestar o sintoma tienes hoy? Te ayudare a encontrar la mejor opcion economica en la red de hospitales.`
+    : '¡Hola! Soy tu Estimador Agentico. ¿Que malestar tienes hoy? Te ayudare a encontrar la mejor opcion economica en nuestra red de hospitales.';
+
   const [messages, setMessages] = useState([
-    { id: 1, text: "¡Hola! Soy tu Estimador Agéntico. ¿Qué malestar tienes hoy? Te ayudaré a encontrar la mejor opción económica en nuestra red de hospitales.", sender: 'bot' }
+    { id: 1, text: saludoInicial, sender: 'bot' }
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -16,11 +20,13 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
   const [showSettings, setShowSettings] = useState(false);
   const [isEmergency, setIsEmergency] = useState(false);
   
-  const messagesEndRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const transcriptRef = useRef("");
+  const messagesEndRef   = useRef(null);
+  const recognitionRef   = useRef(null);
+  const transcriptRef    = useRef("");
   const latestSettingsRef = useRef({ voiceEnabled: true, selectedVoiceURI: "", voices: [] });
-  const sendMessageRef = useRef(null); // Ref para evitar stale closure en el micrófono
+  const sendMessageRef   = useRef(null);
+  // Ref que guarda los hospitales más recientes para detección por texto
+  const knownHospitalesRef = useRef([]);
 
   useEffect(() => {
     latestSettingsRef.current = { voiceEnabled, selectedVoiceURI, voices };
@@ -161,17 +167,46 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
       setIsRecording(false);
     }
 
+    // ── Detectar si el usuario mencionó un hospital por nombre en el texto ──
+    // Se hace ANTES del fetch para que el mapa aparezca mientras el bot responde.
+    if (knownHospitalesRef.current.length > 0 && onHospitalSelected) {
+      const textLC = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const mentioned = knownHospitalesRef.current.find(h => {
+        const name = h.hospital.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        // 1. Coincidencia exacta del nombre completo
+        if (textLC.includes(name)) return true;
+        // 2. Coincidencia por palabras propias (>=5 letras, ignorando abreviaturas como "hosp." o "gral.")
+        const nameWords = name.split(/[\s.,]+/).filter(w => w.length >= 5);
+        // Si alguna palabra propia del hospital aparece en el texto del usuario → match
+        return nameWords.length > 0 && nameWords.some(w => textLC.includes(w));
+      });
+      if (mentioned) {
+        onHospitalSelected(mentioned);
+      }
+    }
+
     try {
+      const historyToSend = messages.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text
+      }));
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({
+          message: text,
+          history: historyToSend,
+          tipoSeguro: tipoSeguro ? { id: tipoSeguro.id, titulo: tipoSeguro.titulo } : null,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        const err = new Error('Network response was not ok');
+        err.status = response.status;
+        throw err;
       }
 
       const data = await response.json();
@@ -200,13 +235,32 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
         onChecklistUpdate(data.checklist);
       }
       if (data.datos_hospitales && onHospitalesUpdate) {
-        onHospitalesUpdate(data.datos_hospitales);
+        // Acumular hospitales de todas las respuestas (deduplicados por nombre)
+        // para que la detección por texto funcione con cualquier hospital mencionado antes.
+        const existing = knownHospitalesRef.current;
+        const newOnes  = data.datos_hospitales.filter(
+          h => !existing.some(e => e.hospital === h.hospital)
+        );
+        knownHospitalesRef.current = [...existing, ...newOnes];
+        onHospitalesUpdate(data.datos_hospitales, data.especialidad);
+      }
+      if (data.especialidad && onEspecialidadUpdate) {
+        onEspecialidadUpdate(data.especialidad);
       }
     } catch (error) {
       console.error('Error:', error);
+      let errorText = "Lo siento, ocurrió un error al procesar tu consulta. Por favor intenta de nuevo en unos momentos.";
+      
+      // Intentar leer el cuerpo de la respuesta de error
+      if (error?.message?.includes('429') || error?.status === 429) {
+        errorText = "⏳ El servicio de inteligencia artificial está momentáneamente saturado (límite de uso alcanzado). Por favor espera unos minutos e intenta de nuevo.";
+      } else if (!navigator.onLine) {
+        errorText = "📡 Sin conexión a internet. Verifica tu red e intenta de nuevo.";
+      }
+
       setMessages(prev => [...prev, {
         id: Date.now(),
-        text: "Lo siento, hubo un error de conexión al estimar tu copago.",
+        text: errorText,
         sender: 'bot'
       }]);
     } finally {
@@ -219,13 +273,15 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
     const userMsg = { id: Date.now(), text: `🏥 Elegí el ${hospital.hospital}`, sender: 'user' };
     const botMsg = {
       id: Date.now() + 1,
-      text: '¡Excelente elección! ¿Deseas que calcule la ruta en el mapa desde tu ubicación actual?',
+      text: '¡Excelente elección! Puedes ver el hospital marcado en el mapa tocando "Mi Cobertura" → "Red de Hospitales". ¿Deseas que calcule la ruta desde tu ubicación actual?',
       sender: 'bot',
       routeOptions: true,
       selectedHospital: hospital
     };
     setMessages(prev => [...prev, userMsg, botMsg]);
     speakMessage(botMsg.text, false);
+    // Notificar al padre para marcar en mapa y abrir el panel automáticamente
+    if (onHospitalSelected) onHospitalSelected(hospital);
   };
 
   const handleAceptarRuta = (msg, aceptar) => {

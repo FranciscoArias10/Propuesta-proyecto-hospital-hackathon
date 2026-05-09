@@ -9,7 +9,7 @@ import {
   esConsultaMedica,              // ← Filtro de entrada
   cleanAndValidateJSON
 } from './backend/services/aiService.js';
-import { obtenerHospitalesPorEspecialidad } from './backend/services/notionService.js';
+import { obtenerHospitalesPorEspecialidad } from './backend/services/supabaseService.js';
 import { calcularCopagoExacto } from './backend/utils/calculator.js';
 
 dotenv.config({ override: true });
@@ -29,11 +29,15 @@ app.use(express.json());
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, history = [], tipoSeguro = null } = req.body;
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
     // ── PASO 0: Filtro de entrada — ¿es una consulta médica real? ─────────────
-    const esMedico = await esConsultaMedica(message);
+    // Si ya hay contexto médico establecido (el asistente ya respondió antes),
+    // se omite el filtro para no interrumpir la conversación en curso.
+    const hasEstablishedContext = history.some(m => m.role === 'assistant');
+    const esMedico = hasEstablishedContext ? true : await esConsultaMedica(message, history);
+
     if (!esMedico) {
       console.log('[FILTRO] Mensaje rechazado: no contiene síntoma médico.');
       return res.json({
@@ -52,22 +56,30 @@ app.post('/api/chat', async (req, res) => {
     // Una determina si hay riesgo vital; la otra identifica la especialidad.
     // Son completamente independientes: nunca una bloquea a la otra.
     const [esEmergencia, especialidad] = await Promise.all([
-      esEmergenciaVital(message),
-      detectarEspecialidadConIA(message),
+      esEmergenciaVital(message, history),
+      detectarEspecialidadConIA(message, history),
     ]);
 
     // ── PASO 2: Consultar hospitales en Notion (SIEMPRE, haya emergencia o no) ─
     const { hospitales, is_fallback } = await obtenerHospitalesPorEspecialidad(especialidad);
 
-    // ── PASO 3: Calcular copago exacto ─────────────────────────────────────────
-    const datos_hospitales = hospitales.map((h) => ({
-      ...h,
-      copago: calcularCopagoExacto(h.costoBase, h.cobertura),
-    }));
+    // ── PASO 3: Calcular copago según tipo de seguro ──────────────────────────
+    const datos_hospitales = hospitales.map((h) => {
+      let cobertura = h.cobertura;
+      // Sin seguro = 0% cobertura, paga precio completo
+      if (tipoSeguro?.id === 'sin_seguro') cobertura = 0;
+      // Seguro Social Campesino = cobertura reducida al 60% si no es emergencia
+      if (tipoSeguro?.id === 'campesino' && cobertura > 0.6) cobertura = 0.6;
+      return {
+        ...h,
+        cobertura,
+        copago: calcularCopagoExacto(h.costoBase, cobertura),
+      };
+    });
 
     // ── PASO 4: Análisis completo del agente de IA ─────────────────────────────
-    const contextoData = { especialidad, hospitales: datos_hospitales };
-    const fullResponse = await obtenerAnalisisMedico(message, contextoData);
+    const contextoData = { especialidad, hospitales: datos_hospitales, tipoSeguro };
+    const fullResponse = await obtenerAnalisisMedico(message, contextoData, history);
 
     // ── PASO 4.5: Extraer y limpiar JSON oculto ────────────────────────────────
     const extraData = cleanAndValidateJSON(fullResponse);

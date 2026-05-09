@@ -13,9 +13,15 @@ const groq = new Groq({
  * frases en tercera persona ("mi papá tiene..."), errores de ortografía, etc.
  * Responde SI o NO con temperatura 0 para máximo determinismo.
  * @param {string} mensajeUsuario
+ * @param {Array} history - Historial de la conversación.
  * @returns {Promise<boolean>} - true si es emergencia vital, false si no.
  */
-export async function esEmergenciaVital(mensajeUsuario) {
+export async function esEmergenciaVital(mensajeUsuario, history = []) {
+  const previousMessages = history.map(msg => ({
+    role: msg.role === 'user' ? 'user' : 'assistant',
+    content: msg.content
+  }));
+
   const completion = await groq.chat.completions.create({
     messages: [
       {
@@ -41,8 +47,9 @@ Responde "NO" en cualquier otro caso: síntomas leves, enfermedades comunes,
 dolores no urgentes, consultas de cobertura sin riesgo vital.
 
 Sé ESTRICTO con los falsos positivos: un dolor de cabeza común es NO.
-Solo marca SI cuando hay riesgo de muerte inminente.`,
+Sólo evalúa el mensaje actual del usuario en el contexto de la conversación.`,
       },
+      ...previousMessages,
       { role: 'user', content: mensajeUsuario },
     ],
     model: 'llama-3.3-70b-versatile',
@@ -55,52 +62,114 @@ Solo marca SI cuando hay riesgo de muerte inminente.`,
   return respuesta === 'SI';
 }
 
-// ─── SYSTEM PROMPT DEL AGENTE ─────────────────────────────────────────────────
-const systemPrompt = `Eres un Estimador Agéntico de Copago y Cobertura Médica (IESS/Aseguradora).
+// ─── SYSTEM PROMPT DINÁMICO DEL AGENTE ───────────────────────────────────────
+/**
+ * Construye el system prompt del agente adaptado al tipo de seguro del paciente.
+ * @param {object|null} tipoSeguro - { id, titulo } del seguro seleccionado.
+ * @returns {string} System prompt completo.
+ */
+function buildSystemPrompt(tipoSeguro = null) {
+  // Bloque de instrucción específica según el tipo de seguro activo
+  let seguroInstruccion = '';
+  if (tipoSeguro) {
+    const reglasPorTipo = {
+      dependencia: `TIPO DE SEGURO ACTIVO: Relacion de Dependencia (IESS obligatorio)
+→ El paciente tiene cobertura IESS completa como trabajador en relacion de dependencia.
+→ En emergencias: copago $0, cobertura 100%.
+→ Usa el campo "cobertura" del contexto para calcular el copago exacto en consultas normales.
+→ Prioriza y destaca hospitales de la red publica IESS.
+→ Se positivo: el paciente tiene buena cobertura.`,
+
+      independiente: `TIPO DE SEGURO ACTIVO: Independiente (IESS Voluntario)
+→ El paciente esta afiliado voluntariamente al IESS como trabajador autonomo.
+→ Usa el campo "cobertura" del contexto para el copago exacto.
+→ Advierte brevemente que algunos procedimientos electivos tienen periodo de espera (hasta 6 meses).
+→ Valida que el plan este al dia en aportaciones para que aplique la cobertura.`,
+
+      campesino: `TIPO DE SEGURO ACTIVO: Seguro Social Campesino (SSC)
+→ El paciente tiene cobertura basica del Seguro Social Campesino.
+→ La cobertura ya esta limitada al 60% en los datos del contexto — usala directamente.
+→ Para especialidades complejas, menciona que puede ser referido al IESS general.
+→ Destaca siempre las opciones de menor copago, ya que el presupuesto del paciente puede ser limitado.
+→ Se empatico y claro.`,
+
+      sin_seguro: `TIPO DE SEGURO ACTIVO: Sin Seguro (pago particular)
+→ El paciente NO tiene seguro social — paga el precio completo (campo "costoBase" del contexto).
+→ La cobertura es 0% — el copago es igual al costo base.
+→ Recomienda prioritariamente hospitales publicos y clinicas de menor costo.
+→ Si el paciente parece ser trabajador activo, menciona la opcion de afiliarse al IESS.
+→ Se MUY empatico y comprensivo — el paciente probablemente tiene recursos limitados.
+→ Ordena las opciones de menor a mayor precio.`,
+    };
+    seguroInstruccion = `\n\n${
+      reglasPorTipo[tipoSeguro.id] ||
+      `TIPO DE SEGURO ACTIVO: ${tipoSeguro.titulo}\n→ Usa el campo "cobertura" del contexto para calcular el copago.`
+    }`;
+  } else {
+    seguroInstruccion = `\n\nTIPO DE SEGURO ACTIVO: No especificado\n→ Presenta las opciones de hospitales con el copago indicado en el contexto.`;
+  }
+
+  return `Eres un Estimador Agéntico de Copago y Cobertura Médica del sistema de salud de Ecuador.
 Tu misión EXCLUSIVA es ayudar al paciente a entender su cobertura médica SOLO cuando describe
-un malestar, dolor, enfermedad o síntoma físico o mental concreto.
+un malestar, dolor, enfermedad o síntoma físico o mental concreto.${seguroInstruccion}
 
 REGLAS ABSOLUTAS — NO NEGOCIABLES:
-1. Si el usuario NO describe un malestar, dolor, enfermedad o síntoma médico claro y específico,
+1. FIDELIDAD EXCLUSIVA A LA BASE DE DATOS (CRÍTICO): ÚNICAMENTE puedes hablar de los hospitales que aparecen en el [CONTEXTO DE BASE DE DATOS] proporcionado. 
+   - TIENES PROHIBIDO usar tu conocimiento previo para sugerir hospitales que no estén en la lista (ej: No hables de hospitales en Milagro si no están en el contexto).
+   - NUNCA inventes nombres de clínicas, hospitales o costos.
+   - Si el usuario menciona una ciudad (como Milagro) y NO hay hospitales para esa ciudad en el contexto, DEBES decir: "Lo siento, actualmente no tengo hospitales registrados en [Ciudad] en mi base de datos. Sin embargo, puedo mostrarte las mejores opciones en ciudades cercanas que sí tengo registradas."
+2. SOLICITUD DE UBICACIÓN (SOLO SI ES NECESARIO): Revisa cuidadosamente si el usuario YA mencionó su ciudad en el mensaje actual o en el historial. 
+   - SI EL USUARIO YA DIJO SU CIUDAD: NO vuelvas a preguntársela. Procede con el análisis.
+   - SI NO LA HA DICHO: Pregúntale amablemente: "¿En qué ciudad te encuentras para indicarte el hospital más cercano?"
+3. PROHIBICIÓN DE ASTERISCOS: NUNCA uses asteriscos (**) ni ningun formato Markdown. Escribe siempre en texto plano.
+4. Si el usuario NO describe un malestar, dolor, enfermedad o síntoma médico claro y específico,
    DEBES responder ÚNICAMENTE con:
    "Lo siento, solo puedo ayudarte con consultas de salud. Por favor, descríbeme qué malestar,
    dolor o síntoma estás experimentando para poder orientarte."
-   No hagas ninguna otra acción. No intentes inferir síntomas donde no los hay.
-2. NUNCA interpretes nombres de videojuegos, películas, personajes, saludos, palabras sin sentido
-   ni texto aleatorio como un síntoma médico. Si el mensaje no menciona explícitamente un malestar
-   humano real, aplica la regla 1.
-3. Cuando el usuario SÍ describe un síntoma claro, entonces:
+5. NUNCA interpretes nombres de videojuegos, películas, personajes, saludos, palabras sin sentido ni texto aleatorio como un síntoma médico.
+6. Cuando el usuario SÍ describe un síntoma claro, entonces:
    a. Sugiere la especialidad médica adecuada.
-   b. Cruza datos con el plan de seguro usando la información de contexto proporcionada.
-   c. Muestra las opciones de hospitales disponibles con cobertura y copago calculado.
-   d. Recomienda la mejor opción económicamente.
+   b. Cruza datos ÚNICAMENTE con el tipo de seguro y el contexto de hospitales enviado.
+   c. Muestra las opciones de hospitales disponibles con cobertura y copago calculado según los datos reales.
+   d. Recomienda la mejor opción económicamente basándote SOLO en los datos del contexto.
+   e. Personaliza el tono según el tipo de seguro, pero mantente estrictamente limitado a los datos reales.
 
-Ejemplo de respuesta válida (usuario describió un síntoma):
-"Para tu dolor de pecho, te recomiendo la especialidad de Cardiología.
-- Hospital IESS Carlos Andrade Marín tiene cobertura del 100%. Tu copago es $0.
-- Clínica Privada San Francisco tiene cobertura del 80%. Tu copago estimado es $25.
-Te conviene el Hospital Carlos Andrade Marín."
+INSTRUCCIÓN CRÍTICA — GUIAR AL USUARIO AL PANEL DE COBERTURA:
+El sistema tiene un panel llamado "Mi Cobertura" (botón en esquina inferior derecha) con dos secciones:
+  • "Red de Hospitales" → mapa interactivo de Ecuador con hospitales marcados.
+  • "Estimación de Copago" → resumen de cobertura y copago calculado.
+DEBES seguir estas reglas:
+- Cuando presentes hospitales, añade al final: "Puedes ver su ubicación en el mapa tocando 'Mi Cobertura' → 'Red de Hospitales'."
+- Cuando calcules el copago, añade: "El resumen está en 'Mi Cobertura' → 'Estimación de Copago'."
+- Si el usuario elige un hospital específico, indícale que quedará marcado en el mapa del panel.
+- Máximo 1-2 oraciones de guía al final, sin repetir si ya lo mencionaste antes.
 
 CRÍTICO - FORMATO DE CHECKLIST OBLIGATORIO (solo cuando hay síntoma válido):
-Al final de tu respuesta, genera la siguiente estructura:
+Al final de tu respuesta, genera la siguiente estructura EXACTA:
 [CHECKLIST_START]
 Título: Estimación de Copago
 Items:
-- Especialidad: [Especialidad]
-- Mejor opción: [Hospital Recomendado]
-- Copago: [$XX]
-[CHECKLIST_END]
-
-Responde SIEMPRE en español formal, empático y claro.`;
+- Especialidad: [Especialidad detectada]
+- Seguro: [Tipo de seguro del paciente]
+- Mejor opción: [Nombre del hospital recomendado]
+- Copago: [$XX.XX]
+[CHECKLIST_END]`;
+}
 
 /**
  * Filtro de entrada: determina con IA si el mensaje del usuario contiene
  * un síntoma, malestar o consulta médica real.
  * Responde "SI" o "NO" — temperatura 0 para máxima determinismo.
  * @param {string} mensajeUsuario
+ * @param {Array} history - Historial de mensajes previos.
  * @returns {Promise<boolean>} - true si es consulta médica válida, false si no.
  */
-export async function esConsultaMedica(mensajeUsuario) {
+export async function esConsultaMedica(mensajeUsuario, history = []) {
+  const previousMessages = history.map(msg => ({
+    role: msg.role === 'user' ? 'user' : 'assistant',
+    content: msg.content
+  }));
+
   const completion = await groq.chat.completions.create({
     messages: [
       {
@@ -114,14 +183,17 @@ Criterios para responder "SI":
 - El usuario menciona dolor, malestar, síntoma, enfermedad, lesión o condición física/mental.
 - Ejemplos: "me duele la cabeza", "tengo fiebre", "siento náuseas", "me lastimé el brazo".
 
+- El mensaje es una continuación lógica de una consulta médica previa (ej: elegir un hospital de la lista, hacer una pregunta sobre el tratamiento).
+
 Criterios para responder "NO" (OBLIGATORIO responder NO en estos casos):
-- El mensaje es un saludo sin síntoma: "hola", "buenos días", "qué tal".
+- El mensaje es un saludo inicial sin síntoma: "hola", "buenos días", "qué tal".
 - El mensaje es texto aleatorio o sin sentido: "asdasd", "12345", "xyzxyz".
 - El mensaje menciona temas no médicos: videojuegos, películas, comida, deportes, etc.
-- El mensaje es una pregunta general no relacionada con salud.
+- El mensaje es una pregunta general no relacionada con salud ni con la conversación actual.
 
 Sé ESTRICTO. Ante la duda, responde "NO".`,
       },
+      ...previousMessages,
       { role: 'user', content: mensajeUsuario },
     ],
     model: 'llama-3.3-70b-versatile',
@@ -138,9 +210,15 @@ Sé ESTRICTO. Ante la duda, responde "NO".`,
  * Usa un prompt corto de Llama para extraer SOLO el nombre de la especialidad
  * médica del mensaje del usuario. Rápido y determinístico.
  * @param {string} mensajeUsuario
+ * @param {Array} history - Historial de la conversación.
  * @returns {Promise<string>} - Ej: "Cardiología", "Traumatología", "Medicina General"
  */
-export async function detectarEspecialidadConIA(mensajeUsuario) {
+export async function detectarEspecialidadConIA(mensajeUsuario, history = []) {
+  const previousMessages = history.map(msg => ({
+    role: msg.role === 'user' ? 'user' : 'assistant',
+    content: msg.content
+  }));
+
   const completion = await groq.chat.completions.create({
     messages: [
       {
@@ -148,8 +226,11 @@ export async function detectarEspecialidadConIA(mensajeUsuario) {
         content: `Eres un clasificador médico. Tu única tarea es identificar la especialidad médica 
 más adecuada para el síntoma descrito por el usuario.
 Responde ÚNICAMENTE con el nombre de la especialidad en español, sin explicaciones ni puntuación.
+Responde ÚNICAMENTE con el nombre de la especialidad en español, sin explicaciones ni puntuación.
+Si el usuario está eligiendo un hospital, responde con la especialidad que venían tratando.
 Ejemplos de respuesta válida: "Cardiología", "Traumatología", "Pediatría", "Dermatología", "Medicina General".`,
       },
+      ...previousMessages,
       { role: 'user', content: mensajeUsuario },
     ],
     model: 'llama-3.3-70b-versatile',
@@ -166,19 +247,37 @@ Ejemplos de respuesta válida: "Cardiología", "Traumatología", "Pediatría", "
  * Llama al modelo Llama 3.3 de Groq para obtener el análisis médico completo.
  * @param {string} mensajeUsuario - El síntoma o mensaje del paciente.
  * @param {object|null} contextoData - Hospitales con copagos calculados desde Notion.
+ * @param {Array} history - Historial de la conversación.
  * @returns {Promise<string>} - La respuesta completa del modelo.
  */
-export async function obtenerAnalisisMedico(mensajeUsuario, contextoData = null) {
+export async function obtenerAnalisisMedico(mensajeUsuario, contextoData = null, history = []) {
   let mensajeFinal = mensajeUsuario;
+  let tipoSeguroCtx = null;
 
   if (contextoData) {
-    const contextoStr = JSON.stringify(contextoData, null, 2);
-    mensajeFinal = `${mensajeUsuario}\n\n[CONTEXTO DE BASE DE DATOS]\n${contextoStr}`;
+    const { tipoSeguro, ...restoContexto } = contextoData;
+    tipoSeguroCtx = tipoSeguro || null;
+    // Incluir el tipo de seguro también en el mensaje de usuario como referencia explícita de datos
+    const seguroStr = tipoSeguro
+      ? `\n[TIPO DE SEGURO DEL PACIENTE]\nid: ${tipoSeguro.id}\nnombre: ${tipoSeguro.titulo}\n`
+      : '';
+    const contextoStr = JSON.stringify(restoContexto, null, 2);
+    mensajeFinal = `${mensajeUsuario}${seguroStr}\n[CONTEXTO DE BASE DE DATOS]\n${contextoStr}`;
   }
+
+  const previousMessages = history.map(msg => ({
+    role: msg.role === 'user' ? 'user' : 'assistant',
+    content: msg.content
+  }));
+
+  // Construir el system prompt dinámico con las instrucciones del tipo de seguro
+  const systemPromptFinal = buildSystemPrompt(tipoSeguroCtx);
+  console.log(`[AGENTE] Tipo de seguro en system prompt: ${tipoSeguroCtx?.id ?? 'no especificado'}`);
 
   const completion = await groq.chat.completions.create({
     messages: [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: systemPromptFinal },
+      ...previousMessages,
       { role: 'user', content: mensajeFinal },
     ],
     model: 'llama-3.3-70b-versatile',
@@ -187,4 +286,25 @@ export async function obtenerAnalisisMedico(mensajeUsuario, contextoData = null)
   });
 
   return completion.choices[0]?.message?.content || 'No pude generar una respuesta.';
+}
+
+/**
+ * Extrae y valida JSON oculto en la respuesta del modelo
+ * @param {string} responseString
+ * @returns {object}
+ */
+export function cleanAndValidateJSON(responseString) {
+  try {
+    const jsonMatch = responseString.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[1]);
+    }
+    const rawJsonMatch = responseString.match(/\{[\s\S]*\}/);
+    if (rawJsonMatch) {
+      return JSON.parse(rawJsonMatch[0]);
+    }
+  } catch (e) {
+    console.error('[JSON Parse Error]', e.message);
+  }
+  return {};
 }
