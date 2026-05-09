@@ -1,7 +1,7 @@
 /**
  * Calcula el copago exacto del paciente.
  * Seguridad: si costoBase o cobertura son nulos/undefined, usa 0 por defecto
- * para que el servidor nunca se caiga por datos incompletos de Notion.
+ * para que el servidor nunca se caiga por datos incompletos.
  *
  * @param {number|null|undefined} costoBase  - El costo total de la consulta en dólares.
  * @param {number|null|undefined} cobertura  - La cobertura del seguro como decimal (ej: 0.85 para 85%).

@@ -24,12 +24,12 @@ app.use(express.json());
 // POST /api/chat
 // La respuesta SIEMPRE incluye ambos:
 //   is_emergency     → boolean  (IA decide si hay emergencia vital)
-//   datos_hospitales → array    (siempre se consulta Notion, haya emergencia o no)
+//   datos_hospitales → array    (siempre se consulta la base de datos, haya emergencia o no)
 // Los dos sistemas trabajan en paralelo y no se bloquean entre sí.
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, history = [], tipoSeguro = null } = req.body;
+    const { message, history = [], tipoSeguro = null, userLocation = null } = req.body;
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
     // ── PASO 0: Filtro de entrada — ¿es una consulta médica real? ─────────────
@@ -60,14 +60,12 @@ app.post('/api/chat', async (req, res) => {
       detectarEspecialidadConIA(message, history),
     ]);
 
-    // ── PASO 2: Consultar hospitales en Notion (SIEMPRE, haya emergencia o no) ─
+    // ── PASO 2: Consultar hospitales en la base de datos (SIEMPRE, haya emergencia o no) ─
     const { hospitales, is_fallback } = await obtenerHospitalesPorEspecialidad(especialidad);
 
     // ── PASO 3: Calcular copago según tipo de seguro ──────────────────────────
     const datos_hospitales = hospitales.map((h) => {
       let cobertura = h.cobertura;
-      // Sin seguro = 0% cobertura, paga precio completo
-      if (tipoSeguro?.id === 'sin_seguro') cobertura = 0;
       // Seguro Social Campesino = cobertura reducida al 60% si no es emergencia
       if (tipoSeguro?.id === 'campesino' && cobertura > 0.6) cobertura = 0.6;
       return {
@@ -78,7 +76,8 @@ app.post('/api/chat', async (req, res) => {
     });
 
     // ── PASO 4: Análisis completo del agente de IA ─────────────────────────────
-    const contextoData = { especialidad, hospitales: datos_hospitales, tipoSeguro };
+    // Limitamos a 10 hospitales para el contexto de la IA para evitar errores de límite de tokens (TPM)
+    const contextoData = { especialidad, hospitales: datos_hospitales.slice(0, 10), tipoSeguro, userLocation };
     const fullResponse = await obtenerAnalisisMedico(message, contextoData, history);
 
     // ── PASO 4.5: Extraer y limpiar JSON oculto ────────────────────────────────

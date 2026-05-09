@@ -93,13 +93,6 @@ function buildSystemPrompt(tipoSeguro = null) {
 → Destaca siempre las opciones de menor copago, ya que el presupuesto del paciente puede ser limitado.
 → Se empatico y claro.`,
 
-      sin_seguro: `TIPO DE SEGURO ACTIVO: Sin Seguro (pago particular)
-→ El paciente NO tiene seguro social — paga el precio completo (campo "costoBase" del contexto).
-→ La cobertura es 0% — el copago es igual al costo base.
-→ Recomienda prioritariamente hospitales publicos y clinicas de menor costo.
-→ Si el paciente parece ser trabajador activo, menciona la opcion de afiliarse al IESS.
-→ Se MUY empatico y comprensivo — el paciente probablemente tiene recursos limitados.
-→ Ordena las opciones de menor a mayor precio.`,
     };
     seguroInstruccion = `\n\n${
       reglasPorTipo[tipoSeguro.id] ||
@@ -109,7 +102,7 @@ function buildSystemPrompt(tipoSeguro = null) {
     seguroInstruccion = `\n\nTIPO DE SEGURO ACTIVO: No especificado\n→ Presenta las opciones de hospitales con el copago indicado en el contexto.`;
   }
 
-  return `Eres un Estimador Agéntico de Copago y Cobertura Médica del sistema de salud de Ecuador.
+  return `Eres Agent_Umbrella, un Estimador Agéntico de Copago y Cobertura Médica del sistema de salud de Ecuador.
 Tu misión es ayudar al paciente a entender su cobertura médica y orientarle hacia el hospital más adecuado.${seguroInstruccion}
 
 IMPORTANTE: Siempre que llegues aquí es porque el paciente YA describió un síntoma o malestar válido.
@@ -139,6 +132,7 @@ DEBES seguir estas reglas:
 - Cuando presentes hospitales, añade al final: "Puedes ver su ubicación en el mapa tocando 'Mi Cobertura' → 'Red de Hospitales'."
 - Cuando calcules el copago, añade: "El resumen está en 'Mi Cobertura' → 'Estimación de Copago'."
 - Si el usuario elige un hospital específico, indícale que quedará marcado en el mapa del panel.
+- REGLA DE UBICACIÓN: Si el contexto indica que la ubicación ya fue proporcionada por GPS/navegador, NO preguntes la ciudad. En su lugar, usa esa información para confirmar que estás mostrando hospitales cercanos.
 - Máximo 1-2 oraciones de guía al final, sin repetir si ya lo mencionaste antes.
 
 CRÍTICO - FORMATO DE CHECKLIST OBLIGATORIO (solo cuando hay síntoma válido):
@@ -243,7 +237,7 @@ Ejemplos de respuesta válida: "Cardiología", "Traumatología", "Pediatría", "
 /**
  * Llama al modelo Llama 3.3 de Groq para obtener el análisis médico completo.
  * @param {string} mensajeUsuario - El síntoma o mensaje del paciente.
- * @param {object|null} contextoData - Hospitales con copagos calculados desde Notion.
+ * @param {object|null} contextoData - Hospitales con copagos calculados desde la base de datos.
  * @param {Array} history - Historial de la conversación.
  * @returns {Promise<string>} - La respuesta completa del modelo.
  */
@@ -252,14 +246,21 @@ export async function obtenerAnalisisMedico(mensajeUsuario, contextoData = null,
   let tipoSeguroCtx = null;
 
   if (contextoData) {
-    const { tipoSeguro, ...restoContexto } = contextoData;
+    const { tipoSeguro, userLocation, ...restoContexto } = contextoData;
     tipoSeguroCtx = tipoSeguro || null;
-    // Incluir el tipo de seguro también en el mensaje de usuario como referencia explícita de datos
+    
+    // Bloque de información de seguro
     const seguroStr = tipoSeguro
       ? `\n[TIPO DE SEGURO DEL PACIENTE]\nid: ${tipoSeguro.id}\nnombre: ${tipoSeguro.titulo}\n`
       : '';
+      
+    // Bloque de información de ubicación
+    const locationStr = userLocation 
+      ? `\n[UBICACIÓN DEL USUARIO]\nEstado: Proporcionada por GPS (lat: ${userLocation.lat}, lng: ${userLocation.lng})\nNota: El usuario ya otorgó permisos de ubicación, no preguntes por su ciudad.\n`
+      : '';
+
     const contextoStr = JSON.stringify(restoContexto, null, 2);
-    mensajeFinal = `${mensajeUsuario}${seguroStr}\n[CONTEXTO DE BASE DE DATOS]\n${contextoStr}`;
+    mensajeFinal = `${mensajeUsuario}${seguroStr}${locationStr}\n[CONTEXTO DE BASE DE DATOS]\n${contextoStr}`;
   }
 
   const previousMessages = history.map(msg => ({

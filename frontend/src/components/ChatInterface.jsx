@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Mic, Volume2, VolumeX, Settings2, AlertTriangle } from 'lucide-react';
+import { Send, User, Loader2, Mic, Volume2, VolumeX, Settings2, AlertTriangle } from 'lucide-react';
+import UmbrellaLogo from './UmbrellaLogo';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada, onHospitalSelected, onEspecialidadUpdate, tipoSeguro, onCambiarSeguro }) => {
+const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada, onHospitalSelected, onEspecialidadUpdate, tipoSeguro, onCambiarSeguro, userLocation }) => {
   const saludoInicial = tipoSeguro
-    ? `¡Hola! Soy tu Estimador Agentico. Veo que tienes un seguro de ${tipoSeguro.titulo}. ¿Que malestar o sintoma tienes hoy? Te ayudare a encontrar la mejor opcion economica en la red de hospitales.`
-    : '¡Hola! Soy tu Estimador Agentico. ¿Que malestar tienes hoy? Te ayudare a encontrar la mejor opcion economica en nuestra red de hospitales.';
+    ? `¡Hola! Soy Agent_Umbrella. Veo que tienes un seguro de ${tipoSeguro.titulo}. ¿Que malestar o sintoma tienes hoy? Te ayudare a encontrar la mejor opcion economica en la red de hospitales.`
+    : '¡Hola! Soy Agent_Umbrella. ¿Que malestar tienes hoy? Te ayudare a encontrar la mejor opcion economica en nuestra red de hospitales.';
 
   const [messages, setMessages] = useState([
     { id: 1, text: saludoInicial, sender: 'bot' }
@@ -200,6 +201,7 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
           message: text,
           history: historyToSend,
           tipoSeguro: tipoSeguro ? { id: tipoSeguro.id, titulo: tipoSeguro.titulo } : null,
+          userLocation: userLocation,
         }),
       });
 
@@ -313,11 +315,11 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
 
       <div className="p-4 flex items-center justify-between gap-3 relative z-10 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-            <Bot size={24} />
+          <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border border-white/20 shadow-[0_0_15px_rgba(238,43,46,0.3)]">
+            <UmbrellaLogo size={40} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-white">Asistente de Cobertura</h2>
+            <h2 className="text-lg font-semibold text-white">Agent_Umbrella</h2>
             <p className="text-xs text-emerald-400 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               En línea
@@ -419,10 +421,10 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
               className={`w-full flex justify-center`}
             >
               <div className={`flex gap-2 md:gap-4 w-full max-w-5xl ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full shrink-0 flex items-center justify-center mt-1 md:mt-0 ${
-                  msg.sender === 'user' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-emerald-400'
+                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full shrink-0 flex items-center justify-center mt-1 md:mt-0 overflow-hidden ${
+                  msg.sender === 'user' ? 'bg-emerald-600 text-white' : 'border border-white/30 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
                 }`}>
-                  {msg.sender === 'user' ? <User size={20} /> : <Bot size={20} />}
+                  {msg.sender === 'user' ? <User size={20} /> : <UmbrellaLogo size={40} />}
                 </div>
                 
                 <div
@@ -467,8 +469,8 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
               className="w-full flex justify-center"
             >
               <div className="flex gap-2 md:gap-4 w-full max-w-5xl">
-                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center shrink-0 mt-1 md:mt-0">
-                  <Bot size={20} />
+                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-white/30 flex items-center justify-center shrink-0 mt-1 md:mt-0 shadow-[0_0_10px_rgba(239,68,68,0.5)] overflow-hidden">
+                  <UmbrellaLogo size={40} />
                 </div>
                 <div className="p-4 rounded-2xl bg-transparent text-slate-200 flex items-center gap-3">
                   <Loader2 size={18} className="animate-spin text-emerald-400" />

@@ -119,6 +119,7 @@ function App() {
                 <div className="flex-1 relative flex flex-col min-h-0">
                   <ChatInterface
                     tipoSeguro={tipoSeguro}
+                    userLocation={userLocation}
                     onChecklistUpdate={updateChecklist}
                     onHospitalesUpdate={updateHospitales}
                     onRutaSolicitada={handleRutaSolicitada}
