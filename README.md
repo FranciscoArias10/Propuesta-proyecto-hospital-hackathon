@@ -8,6 +8,7 @@
   <img src="https://img.shields.io/badge/IA-Groq%20%7C%20LLaMA%203.3%2070B-orange?style=for-the-badge" alt="IA">
   <img src="https://img.shields.io/badge/DB-Supabase-3ECF8E?style=for-the-badge" alt="Supabase">
   <img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="MIT">
+  <a href="https://hackiathon-viamatica.netlify.app/"><img src="https://img.shields.io/badge/🚀_Demo_en_Vivo-Netlify-00C7B7?style=for-the-badge" alt="Demo"></a>
 </p>
 
 <p align="center">
@@ -110,7 +111,7 @@ Nuestra plataforma ofrece un acompañamiento integral de extremo a extremo:
 
 | Servicio | Plataforma | Descripción |
 | :--- | :--- | :--- |
-| **Frontend** | [Netlify](https://app.netlify.com/) | Deploy automático de la app React/Vite |
+| **Frontend** | [Netlify](https://hackiathon-viamatica.netlify.app/) | Deploy automático de la app React/Vite |
 | **Backend** | [Render](https://render.com/) | Servidor Node.js/Express en producción |
 | **Base de datos** | [Supabase](https://hcsvcdzpzpxdgfpyjkoh.supabase.co) | PostgreSQL gestionado — Status: Healthy |
 
@@ -199,5 +200,5 @@ Este proyecto está disponible bajo la licencia **MIT**. Consulta el archivo [LI
 ---
 
 <p align="center">
-  Hecho con ❤️ en Ecuador · Hackathon 2025
+  Hackathon 2026
 </p>
