@@ -10,7 +10,7 @@ import {
   cleanAndValidateJSON
 } from './backend/services/aiService.js';
 import { obtenerHospitalesPorEspecialidad, supabase } from './backend/services/supabaseService.js';
-import { calcularCopagoExacto } from './backend/utils/calculator.js';
+import { calcularCopagoExacto, calcularDistancia } from './backend/utils/calculator.js';
 
 dotenv.config({ override: true });
 
@@ -63,8 +63,20 @@ app.post('/api/chat', async (req, res) => {
     // ── PASO 2: Consultar hospitales en la base de datos (SIEMPRE, haya emergencia o no) ─
     const { hospitales, is_fallback } = await obtenerHospitalesPorEspecialidad(especialidad);
 
-    // ── PASO 3: Calcular copago según tipo de seguro ──────────────────────────
-    const datos_hospitales = hospitales.map((h) => {
+    // ── PASO 3: Filtrar y calcular copago según tipo de seguro ──────────────────────────
+    const planDbMap = {
+      'dependencia': 'Relación de Dependencia',
+      'independiente': 'Independiente',
+      'campesino': 'Seguro Social Campesino'
+    };
+    const targetPlan = tipoSeguro ? planDbMap[tipoSeguro.id] : null;
+    
+    // Filtrar hospitales para que solo se muestren los del plan seleccionado
+    const hospitalesFiltrados = targetPlan 
+      ? hospitales.filter(h => h.plan === targetPlan) 
+      : hospitales;
+
+    let datos_hospitales = hospitalesFiltrados.map((h) => {
       let cobertura = h.cobertura;
       // Seguro Social Campesino = cobertura reducida al 60% si no es emergencia
       if (tipoSeguro?.id === 'campesino' && cobertura > 0.6) cobertura = 0.6;
@@ -74,6 +86,15 @@ app.post('/api/chat', async (req, res) => {
         copago: calcularCopagoExacto(h.costoBase, cobertura),
       };
     });
+
+    // ── PASO 3.5: Ordenar por distancia si tenemos la ubicación ───────────────
+    if (userLocation && userLocation.lat && userLocation.lng) {
+      datos_hospitales.sort((a, b) => {
+        const distA = calcularDistancia(userLocation.lat, userLocation.lng, parseFloat(a.latitud), parseFloat(a.longitud));
+        const distB = calcularDistancia(userLocation.lat, userLocation.lng, parseFloat(b.latitud), parseFloat(b.longitud));
+        return distA - distB;
+      });
+    }
 
     // ── PASO 4: Análisis completo del agente de IA ─────────────────────────────
     // Limitamos a 10 hospitales para el contexto de la IA para evitar errores de límite de tokens (TPM)
@@ -99,16 +120,13 @@ app.post('/api/chat', async (req, res) => {
     // ── PASO 5: Parsear checklist embebido en la respuesta ─────────────────────
     let checklistData = null;
 
-    const checklistMatch = responseContent.match(/\[CHECKLIST_START\]([\s\S]*?)\[CHECKLIST_END\]/);
-    if (checklistMatch) {
-      responseContent = responseContent.replace(/\[CHECKLIST_START\][\s\S]*?\[CHECKLIST_END\]/, '').trim();
-      const checklistContent = checklistMatch[1];
-      const titleMatch = checklistContent.match(/Título:\s*(.+)/i);
-      const itemsMatches = checklistContent.match(/^[\s\t]*[-*•\d\.]+\s+(.+)$/gm);
-
-      if (titleMatch && itemsMatches?.length > 0) {
+    const summaryMatch = responseContent.match(/Resumen de Estimación:\s*([\s\S]+)/i);
+    if (summaryMatch) {
+      // Nota: NO eliminamos el resumen de `responseContent` para que el paciente lo lea
+      const itemsMatches = summaryMatch[1].match(/^[\s\t]*[-*•\d\.]+\s+(.+)$/gm);
+      if (itemsMatches && itemsMatches.length > 0) {
         checklistData = {
-          nombre: titleMatch[1].trim(),
+          nombre: "Estimación de Copago",
           pasos: itemsMatches.map((item, index) => ({
             id: index + 1,
             text: item.replace(/^[\s\t]*[-*•\d\.]+\s+/, '').trim(),

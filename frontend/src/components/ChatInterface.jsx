@@ -118,7 +118,8 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
     const settings = latestSettingsRef.current;
     if (!settings.voiceEnabled || !window.speechSynthesis) return;
     window.speechSynthesis.cancel(); // Cancel previous speech
-    const utterance = new SpeechSynthesisUtterance(text);
+    const cleanText = text.replace(/[*•]/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanText);
     
     if (settings.selectedVoiceURI) {
       const voice = settings.voices.find(v => v.voiceURI === settings.selectedVoiceURI);
@@ -192,7 +193,8 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
         content: m.text
       }));
 
-      const response = await fetch('/api/chat', {
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
