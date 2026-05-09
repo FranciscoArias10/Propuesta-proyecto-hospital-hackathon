@@ -273,55 +273,13 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
     const userMsg = { id: Date.now(), text: `🏥 Elegí el ${hospital.hospital}`, sender: 'user' };
     const botMsg = {
       id: Date.now() + 1,
-      text: '¡Excelente elección! Puedes ver el hospital marcado en el mapa tocando "Mi Cobertura" → "Red de Hospitales". ¿Deseas que calcule la ruta desde tu ubicación actual?',
-      sender: 'bot',
-      routeOptions: true,
-      selectedHospital: hospital
+      text: '¡Excelente elección! Acabo de trazar la ruta más rápida hacia el hospital desde tu ubicación actual. Puedes verla tocando "Mi Cobertura" → "Red de Hospitales".',
+      sender: 'bot'
     };
     setMessages(prev => [...prev, userMsg, botMsg]);
     speakMessage(botMsg.text, false);
-    // Notificar al padre para marcar en mapa y abrir el panel automáticamente
+    // Notificar al padre para marcar en mapa y trazar ruta
     if (onHospitalSelected) onHospitalSelected(hospital);
-  };
-
-  const handleAceptarRuta = (msg, aceptar) => {
-    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, hideChips: true } : m));
-    const userText = aceptar ? '📍 Sí, usar mi ubicación' : 'No, gracias';
-    setMessages(prev => [...prev, { id: Date.now(), text: userText, sender: 'user' }]);
-
-    if (aceptar) {
-      if (!navigator.geolocation) {
-        const errorMsg = 'Lo siento, tu navegador no soporta geolocalización.';
-        setMessages(prev => [...prev, { id: Date.now() + 1, text: errorMsg, sender: 'bot' }]);
-        speakMessage(errorMsg, false);
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const userLocation = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-          const successMsg = `📍 Ubicación obtenida. Trazando ruta hacia el ${msg.selectedHospital.hospital}...`;
-          setMessages(prev => [...prev, { id: Date.now() + 1, text: successMsg, sender: 'bot' }]);
-          speakMessage(successMsg, false);
-
-          if (onRutaSolicitada) {
-            onRutaSolicitada(userLocation, msg.selectedHospital);
-          }
-        },
-        (error) => {
-          const errorMsg = 'No pude acceder a tu ubicación. Asegúrate de dar permisos en tu navegador.';
-          setMessages(prev => [...prev, { id: Date.now() + 1, text: errorMsg, sender: 'bot' }]);
-          speakMessage(errorMsg, false);
-        }
-      );
-    } else {
-      const botResponse = 'Entendido. Si necesitas algo más, aquí estaré.';
-      setMessages(prev => [...prev, { id: Date.now() + 1, text: botResponse, sender: 'bot' }]);
-      speakMessage(botResponse, false);
-    }
   };
 
   const handleSend = (e) => {
@@ -497,23 +455,7 @@ const ChatInterface = ({ onChecklistUpdate, onHospitalesUpdate, onRutaSolicitada
                     </div>
                   )}
 
-                  {/* CHOICE CHIPS PARA RUTA */}
-                  {msg.sender === 'bot' && msg.routeOptions && !msg.hideChips && (
-                    <div className="mt-4 flex flex-wrap gap-2 pointer-events-auto">
-                      <button
-                        onClick={() => handleAceptarRuta(msg, true)}
-                        className="bg-blue-600/20 hover:bg-blue-600/80 border border-blue-500/50 text-blue-300 hover:text-white px-4 py-2 rounded-full text-sm font-medium transition-all shadow-md active:scale-95 flex items-center gap-2"
-                      >
-                        📍 Sí, usar mi ubicación
-                      </button>
-                      <button
-                        onClick={() => handleAceptarRuta(msg, false)}
-                        className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-4 py-2 rounded-full text-sm font-medium transition-all shadow-md active:scale-95"
-                      >
-                        No, gracias
-                      </button>
-                    </div>
-                  )}
+
                 </div>
               </div>
             </motion.div>

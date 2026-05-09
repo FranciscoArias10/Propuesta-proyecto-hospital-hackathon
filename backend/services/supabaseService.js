@@ -3,12 +3,12 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-console.log('[Supabase] Cliente inicializado:', supabaseUrl ? '✅ OK' : '❌ FALTA URL');
+console.log('[Supabase] Cliente inicializado:', supabaseUrl ? `✅ OK (${supabaseUrl})` : '❌ FALTA URL');
 
 /**
  * Obtiene hospitales por especialidad desde Supabase.
@@ -24,26 +24,38 @@ export const obtenerHospitalesPorEspecialidad = async (especialidad) => {
 
     console.log(`[Supabase] Consultando especialidad: "${especialidad}"`);
 
-    // 1. Intentar buscar por especialidad (coincidencia exacta o similar)
-    let { data: hospitales, error } = await supabase
-      .from('medic_info')
-      .select('*')
-      .ilike('especialidad', `%${especialidad}%`);
-
-    if (error) throw error;
-
+    let hospitales = [];
     let is_fallback = false;
 
-    // 2. Si no hay resultados, traer todos (fallback)
-    if (!hospitales || hospitales.length === 0) {
-      console.log(`[Supabase] Sin resultados para "${especialidad}", aplicando fallback...`);
+    // 1. Si hay especialidad, intentar buscar por ella
+    if (especialidad && especialidad.trim() !== '') {
+      const { data, error } = await supabase
+        .from('medic_info')
+        .select('*')
+        .ilike('especialidad', `%${especialidad}%`);
+
+      if (error) {
+        console.error('[Supabase] Error en query por especialidad:', JSON.stringify(error));
+        throw error;
+      }
+      hospitales = data || [];
+      console.log(`[Supabase] Resultados para "${especialidad}": ${hospitales.length}`);
+    }
+
+    // 2. Si no hay resultados (o no se buscó por especialidad), traer todos (fallback)
+    if (hospitales.length === 0) {
+      console.log(`[Supabase] Sin resultados para "${especialidad}", aplicando fallback (todos)...`);
       const { data: allData, error: allError } = await supabase
         .from('medic_info')
         .select('*');
-      
-      if (allError) throw allError;
+
+      if (allError) {
+        console.error('[Supabase] Error en fallback:', JSON.stringify(allError));
+        throw allError;
+      }
       hospitales = allData || [];
       is_fallback = true;
+      console.log(`[Supabase] Fallback total: ${hospitales.length} registros`);
     }
 
     // 3. Mapear al formato esperado por el resto de la app
@@ -53,16 +65,15 @@ export const obtenerHospitalesPorEspecialidad = async (especialidad) => {
       const coberturaFinal = coberturaNum > 1 ? coberturaNum / 100 : coberturaNum;
 
       return {
-        hospital:     h.hospital || 'Hospital no definido',
-        especialidad: h.especialidad || 'Sin especialidad',
-        ciudad:       h.ciudad || 'No especificada',
-        plan:         h.tipo_afiliacion || 'Sin plan',
+        hospital:     h.hospital     || h.nombre_hospital || 'Hospital no definido',
+        especialidad: h.especialidad || h.specialty       || 'Sin especialidad',
+        ciudad:       h.ciudad       || h.city            || 'No especificada',
+        plan:         h.tipo_afiliacion || h.plan          || 'Sin plan',
         cobertura:    coberturaFinal,
-        // Usamos el copago de la DB como costoBase para que el calculador siga funcionando
-        costoBase:    parseFloat(h.copago) || 0,
-        tiempoEspera: h.tiempo_espera || 'No definido',
-        latitud:      h.latitud || null,
-        longitud:     h.longitud || null,
+        costoBase:    parseFloat(h.copago || h.costo_base || h.cost) || 0,
+        tiempoEspera: h.tiempo_espera  || h.wait_time     || 'No definido',
+        latitud:      parseFloat(h.latitud  || h.lat)     || null,
+        longitud:     parseFloat(h.longitud || h.lng || h.lon) || null,
       };
     });
 

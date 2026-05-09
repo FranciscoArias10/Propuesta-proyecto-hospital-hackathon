@@ -9,7 +9,7 @@ import {
   esConsultaMedica,              // ← Filtro de entrada
   cleanAndValidateJSON
 } from './backend/services/aiService.js';
-import { obtenerHospitalesPorEspecialidad } from './backend/services/supabaseService.js';
+import { obtenerHospitalesPorEspecialidad, supabase } from './backend/services/supabaseService.js';
 import { calcularCopagoExacto } from './backend/utils/calculator.js';
 
 dotenv.config({ override: true });
@@ -132,6 +132,43 @@ app.post('/api/chat', async (req, res) => {
   } catch (error) {
     console.error('Error en /api/chat:', error);
     res.status(500).json({ error: 'Error procesando tu solicitud: ' + error.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/debug/supabase  — Diagnóstico: devuelve todos los registros crudos
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.get('/api/debug/supabase', async (req, res) => {
+  try {
+    const { data, error, count } = await supabase
+      .from('medic_info')
+      .select('*', { count: 'exact' })
+      .limit(20);
+
+    if (error) {
+      return res.json({ ok: false, error: error.message, hint: error.hint, details: error.details });
+    }
+
+    const columnas = data && data.length > 0 ? Object.keys(data[0]) : [];
+    res.json({
+      ok: true,
+      total_registros: count,
+      columnas,
+      muestra: data,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/hospitales — Devuelve todos los hospitales mapeados
+app.get('/api/hospitales', async (req, res) => {
+  try {
+    const { hospitales, is_fallback } = await obtenerHospitalesPorEspecialidad('');
+    res.json({ ok: true, total: hospitales.length, is_fallback, hospitales });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 

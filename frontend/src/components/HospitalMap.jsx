@@ -1,99 +1,123 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import L from 'leaflet';
+import 'leaflet-routing-machine';
 
 // Fix para los iconos de Leaflet en Vite/React
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
-import iconUrl from 'leaflet/dist/images/marker-icon.png';
-import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
+import iconUrl      from 'leaflet/dist/images/marker-icon.png';
+import shadowUrl    from 'leaflet/dist/images/marker-shadow.png';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
 
-// ── Coordenadas estáticas de los hospitales conocidos ──────────────────────────
-export const HOSPITAL_COORDS = {
-  // Quito
-  'Hospital Metropolitano':        { lat: -0.1897,  lng: -78.4843 },
-  'Hospital Eugenio Espejo':       { lat: -0.2078,  lng: -78.5001 },
-  'Hospital Gral. Martín Icaza':   { lat: -1.7956,  lng: -79.5339 },
-  'Hospital de Especialidades Eugenio Espejo': { lat: -0.2078, lng: -78.5001 },
-  'Hospital Gral. Pablo Arturo Suárez': { lat: -0.1212, lng: -78.5038 },
-  'Clínica San Pablo':             { lat: -0.2060,  lng: -78.4833 },
-  'Hospital de los Valles':        { lat: -0.2730,  lng: -78.4500 },
-
-  // Guayaquil
-  'Hospital Alcívar':              { lat: -2.1741,  lng: -79.9032 },
-  'OmniHospital':                  { lat: -2.1342,  lng: -79.9124 },
-  'Hospital Luis Vernaza':         { lat: -2.1951,  lng: -79.8816 },
-  'Hospital Clínica Kennedy':      { lat: -2.1569,  lng: -79.9009 },
-  'Hospital Universitario':        { lat: -2.2099,  lng: -79.9077 },
-
-  // Babahoyo
-  'Hospital IESS Babahoyo':        { lat: -1.8025,  lng: -79.5318 },
-
-  // Cuenca
-  'Hospital José Carrasco Arteaga': { lat: -2.9181, lng: -79.0100 },
-  'Hospital del Río':              { lat: -2.9061,  lng: -79.0197 },
-
-  // Manta / Costa
-  'Hospital General IESS Manta':   { lat: -0.9592,  lng: -80.7197 },
-
-  // Ambato
-  'Hospital IESS Ambato':          { lat: -1.2399,  lng: -78.6268 },
-
-  // Loja
-  'Hospital Isidro Ayora':         { lat: -3.9955,  lng: -79.2027 },
-
-  // Riobamba
-  'Hospital General IESS Riobamba': { lat: -1.6533, lng: -78.6503 },
-
-  // Teodoro Maldonado (IESS Guayaquil)
-  'Hosp. Teodoro Maldonado':       { lat: -2.2004,  lng: -79.9042 },
-  'Hospital Teodoro Maldonado Carbo': { lat: -2.2004, lng: -79.9042 },
-};
-
-// Coordenadas por defecto si el nombre no coincide exactamente (búsqueda parcial)
-function findCoords(hospitalName) {
-  if (!hospitalName) return null;
-  const key = Object.keys(HOSPITAL_COORDS).find(k =>
-    hospitalName.toLowerCase().includes(k.toLowerCase()) ||
-    k.toLowerCase().includes(hospitalName.toLowerCase())
-  );
-  return key ? HOSPITAL_COORDS[key] : null;
-}
-
-// ── Iconos personalizados SVG ──────────────────────────────────────────────────
-const createSvgIcon = (color, size = 32) => L.divIcon({
+// ── Iconos SVG personalizados ──────────────────────────────────────────────────
+const createSvgIcon = (color, size = 30) => L.divIcon({
   className: '',
-  html: `<svg width="${size}" height="${size}" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M16 0C9.373 0 4 5.373 4 12c0 8 12 28 12 28s12-20 12-28C28 5.373 22.627 0 16 0z" fill="${color}" stroke="white" stroke-width="2"/>
-    <circle cx="16" cy="12" r="5" fill="white" opacity="0.9"/>
+  html: `<svg width="${size}" height="${size * 1.3}" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.4"/></filter>
+    <path d="M16 1C8.82 1 3 6.82 3 14c0 9.5 13 27 13 27s13-17.5 13-27C29 6.82 23.18 1 16 1z"
+          fill="${color}" stroke="white" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="16" cy="14" r="5.5" fill="white" opacity="0.95"/>
+    <text x="16" y="18" text-anchor="middle" font-size="7" fill="${color}" font-weight="bold">H</text>
   </svg>`,
-  iconSize: [size, size * 1.25],
-  iconAnchor: [size / 2, size * 1.25],
-  popupAnchor: [0, -size * 1.25],
+  iconSize:    [size, size * 1.3],
+  iconAnchor:  [size / 2, size * 1.3],
+  popupAnchor: [0, -size * 1.3],
 });
 
-const normalIcon   = createSvgIcon('#3b82f6', 30); // azul
-const selectedIcon = createSvgIcon('#10b981', 38); // verde esmeralda, más grande
+const normalIcon   = createSvgIcon('#3b82f6', 30);
+const selectedIcon = createSvgIcon('#10b981', 38);
 
-// ── Componente que hace flyTo cuando se selecciona un hospital ─────────────────
+const userIcon = L.divIcon({
+  className: '',
+  html: `<div style="
+    width:20px;height:20px;
+    background:#f59e0b;
+    border:3px solid white;
+    border-radius:50%;
+    box-shadow:0 0 0 4px rgba(245,158,11,0.35), 0 2px 8px rgba(0,0,0,0.4);
+  "></div>`,
+  iconSize:   [20, 20],
+  iconAnchor: [10, 10],
+});
+
+// ── FlyTo cuando se selecciona un hospital ────────────────────────────────────
 const MapFlyTo = ({ targetHospital }) => {
   const map = useMap();
   useEffect(() => {
-    if (!targetHospital) return;
-    const coords = findCoords(targetHospital.hospital);
-    if (coords) {
-      map.flyTo([coords.lat, coords.lng], 14, { duration: 1.4 });
-    }
+    if (!targetHospital?.latitud || !targetHospital?.longitud) return;
+    map.flyTo([targetHospital.latitud, targetHospital.longitud], 14, { duration: 1.4 });
   }, [map, targetHospital]);
+  return null;
+};
+
+// ── Routing: dibuja la ruta de usuario → hospital seleccionado ────────────────
+const RoutingControl = ({ userLocation, targetHospital }) => {
+  const map = useMap();
+  const routingRef = useRef(null);
+
+  useEffect(() => {
+    // Limpiar ruta anterior
+    if (routingRef.current) {
+      try { map.removeControl(routingRef.current); } catch (_) {}
+      routingRef.current = null;
+    }
+
+    // Necesitamos ambos puntos
+    if (!userLocation || !targetHospital?.latitud || !targetHospital?.longitud) return;
+
+    const origin = L.latLng(userLocation.lat, userLocation.lng);
+    const dest   = L.latLng(targetHospital.latitud, targetHospital.longitud);
+
+    const control = L.Routing.control({
+      waypoints: [origin, dest],
+      routeWhileDragging: false,
+      addWaypoints: false,
+      draggableWaypoints: false,
+      fitSelectedRoutes: true,
+      show: false, // Oculta el panel de instrucciones de texto
+      lineOptions: {
+        styles: [
+          { color: '#10b981', opacity: 0.15, weight: 10 }, // halo verde suave
+          { color: '#10b981', opacity: 0.9,  weight: 4  }, // línea verde
+        ],
+        extendToWaypoints: true,
+        missingRouteTolerance: 0,
+      },
+      createMarker: () => null, // No crear marcadores extra (ya los tenemos)
+      router: L.Routing.osrmv1({
+        serviceUrl: 'https://router.project-osrm.org/route/v1',
+        profile: 'driving',
+      }),
+    });
+
+    control.on('routesfound', (e) => {
+      const dist = (e.routes[0].summary.totalDistance / 1000).toFixed(1);
+      const mins = Math.round(e.routes[0].summary.totalTime / 60);
+      console.log(`[RUTA] ${dist} km · ~${mins} min`);
+    });
+
+    control.on('routingerror', (e) => {
+      console.warn('[RUTA] Error de routing:', e.error?.message || e);
+    });
+
+    control.addTo(map);
+    routingRef.current = control;
+
+    // Cleanup al desmontar
+    return () => {
+      try { map.removeControl(control); } catch (_) {}
+    };
+  }, [map, userLocation, targetHospital]);
+
   return null;
 };
 
 // ── Componente principal ───────────────────────────────────────────────────────
 const HospitalMap = ({ hospitales = [], userLocation = null, targetHospital = null }) => {
-  // Centro de Ecuador
   const ecuadorCenter = [-1.8312, -78.1834];
 
   return (
@@ -109,57 +133,71 @@ const HospitalMap = ({ hospitales = [], userLocation = null, targetHospital = nu
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
+        {/* Volar al hospital seleccionado */}
         <MapFlyTo targetHospital={targetHospital} />
 
-        {/* Marcador de ubicación del usuario */}
+        {/* Trazar ruta de usuario al hospital seleccionado */}
+        <RoutingControl userLocation={userLocation} targetHospital={targetHospital} />
+
+        {/* Marcador del usuario */}
         {userLocation && (
           <>
             <Marker
               position={[userLocation.lat, userLocation.lng]}
-              icon={L.divIcon({
-                className: '',
-                html: `<div style="width:18px;height:18px;background:#f59e0b;border:3px solid white;border-radius:50%;box-shadow:0 0 8px rgba(245,158,11,0.8)"></div>`,
-                iconSize: [18, 18],
-                iconAnchor: [9, 9],
-              })}
+              icon={userIcon}
             >
-              <Popup>📍 Tu ubicación</Popup>
+              <Popup>📍 <strong>Tu ubicación</strong></Popup>
             </Marker>
             <Circle
               center={[userLocation.lat, userLocation.lng]}
-              radius={800}
-              pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.1, weight: 1 }}
+              radius={600}
+              pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.08, weight: 1.5, dashArray: '6,4' }}
             />
           </>
         )}
 
-        {/* Marcadores de hospitales */}
+        {/* Marcadores de hospitales — usan las coordenadas reales de Supabase */}
         {hospitales.map((h, index) => {
-          const coords = findCoords(h.hospital);
-          if (!coords) return null;
+          // Usar coordenadas de Supabase directamente
+          const lat = parseFloat(h.latitud);
+          const lng = parseFloat(h.longitud);
+          if (!lat || !lng || isNaN(lat) || isNaN(lng)) return null;
+
           const isSelected = targetHospital && targetHospital.hospital === h.hospital;
-          const copagoPct = Math.round((1 - h.cobertura) * (h.costoBase || 0));
+          const copago = h.copago ?? Math.round((1 - h.cobertura) * (h.costoBase || 0));
 
           return (
             <Marker
-              key={index}
-              position={[coords.lat, coords.lng]}
+              key={`${h.hospital}-${index}`}
+              position={[lat, lng]}
               icon={isSelected ? selectedIcon : normalIcon}
               zIndexOffset={isSelected ? 1000 : 0}
             >
               <Popup>
-                <div style={{ minWidth: 160 }}>
-                  <strong style={{ color: isSelected ? '#10b981' : '#3b82f6' }}>
+                <div style={{ minWidth: 170, fontFamily: 'system-ui, sans-serif' }}>
+                  <div style={{ fontWeight: 700, color: isSelected ? '#10b981' : '#3b82f6', marginBottom: 4 }}>
                     {isSelected ? '✅ ' : '🏥 '}{h.hospital}
-                  </strong>
-                  <br />
-                  <span style={{ fontSize: 12, color: '#64748b' }}>{h.especialidad}</span>
-                  <br />
-                  <span>Plan: <strong>{h.plan}</strong></span>
-                  <br />
-                  <span>Cobertura: <strong>{Math.round(h.cobertura * 100)}%</strong></span>
-                  <br />
-                  <span>Copago estimado: <strong style={{ color: '#10b981' }}>${copagoPct}</strong></span>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>{h.especialidad} · {h.ciudad}</div>
+                  <div style={{ fontSize: 13 }}>
+                    Plan: <strong>{h.plan}</strong>
+                  </div>
+                  <div style={{ fontSize: 13 }}>
+                    Cobertura: <strong style={{ color: '#10b981' }}>{Math.round(h.cobertura * 100)}%</strong>
+                  </div>
+                  <div style={{ fontSize: 13 }}>
+                    Copago: <strong style={{ color: copago === 0 ? '#10b981' : '#f59e0b' }}>${copago}</strong>
+                  </div>
+                  {h.tiempoEspera && (
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                      ⏱ Espera: {h.tiempoEspera}
+                    </div>
+                  )}
+                  {isSelected && userLocation && (
+                    <div style={{ marginTop: 6, fontSize: 11, color: '#10b981', fontStyle: 'italic' }}>
+                      🗺 Ruta trazada en el mapa
+                    </div>
+                  )}
                 </div>
               </Popup>
             </Marker>

@@ -52,7 +52,7 @@ Sólo evalúa el mensaje actual del usuario en el contexto de la conversación.`
       ...previousMessages,
       { role: 'user', content: mensajeUsuario },
     ],
-    model: 'llama-3.3-70b-versatile',
+    model: 'llama-3.1-8b-instant',
     temperature: 0.0,
     max_tokens: 5,
   });
@@ -110,24 +110,21 @@ function buildSystemPrompt(tipoSeguro = null) {
   }
 
   return `Eres un Estimador Agéntico de Copago y Cobertura Médica del sistema de salud de Ecuador.
-Tu misión EXCLUSIVA es ayudar al paciente a entender su cobertura médica SOLO cuando describe
-un malestar, dolor, enfermedad o síntoma físico o mental concreto.${seguroInstruccion}
+Tu misión es ayudar al paciente a entender su cobertura médica y orientarle hacia el hospital más adecuado.${seguroInstruccion}
+
+IMPORTANTE: Siempre que llegues aquí es porque el paciente YA describió un síntoma o malestar válido.
+Tu tarea es SIEMPRE responder de forma útil y orientar al paciente. NUNCA rechaces el mensaje.
 
 REGLAS ABSOLUTAS — NO NEGOCIABLES:
 1. FIDELIDAD EXCLUSIVA A LA BASE DE DATOS (CRÍTICO): ÚNICAMENTE puedes hablar de los hospitales que aparecen en el [CONTEXTO DE BASE DE DATOS] proporcionado. 
-   - TIENES PROHIBIDO usar tu conocimiento previo para sugerir hospitales que no estén en la lista (ej: No hables de hospitales en Milagro si no están en el contexto).
+   - TIENES PROHIBIDO usar tu conocimiento previo para sugerir hospitales que no estén en la lista.
    - NUNCA inventes nombres de clínicas, hospitales o costos.
-   - Si el usuario menciona una ciudad (como Milagro) y NO hay hospitales para esa ciudad en el contexto, DEBES decir: "Lo siento, actualmente no tengo hospitales registrados en [Ciudad] en mi base de datos. Sin embargo, puedo mostrarte las mejores opciones en ciudades cercanas que sí tengo registradas."
-2. SOLICITUD DE UBICACIÓN (SOLO SI ES NECESARIO): Revisa cuidadosamente si el usuario YA mencionó su ciudad en el mensaje actual o en el historial. 
+   - Si el usuario menciona una ciudad y NO hay hospitales para esa ciudad en el contexto, di: "Lo siento, actualmente no tengo hospitales registrados en [Ciudad]. Sin embargo, puedo mostrarte las mejores opciones en ciudades cercanas."
+2. SOLICITUD DE UBICACIÓN (SOLO SI ES NECESARIO): Revisa si el usuario YA mencionó su ciudad en el mensaje actual o en el historial.
    - SI EL USUARIO YA DIJO SU CIUDAD: NO vuelvas a preguntársela. Procede con el análisis.
-   - SI NO LA HA DICHO: Pregúntale amablemente: "¿En qué ciudad te encuentras para indicarte el hospital más cercano?"
-3. PROHIBICIÓN DE ASTERISCOS: NUNCA uses asteriscos (**) ni ningun formato Markdown. Escribe siempre en texto plano.
-4. Si el usuario NO describe un malestar, dolor, enfermedad o síntoma médico claro y específico,
-   DEBES responder ÚNICAMENTE con:
-   "Lo siento, solo puedo ayudarte con consultas de salud. Por favor, descríbeme qué malestar,
-   dolor o síntoma estás experimentando para poder orientarte."
-5. NUNCA interpretes nombres de videojuegos, películas, personajes, saludos, palabras sin sentido ni texto aleatorio como un síntoma médico.
-6. Cuando el usuario SÍ describe un síntoma claro, entonces:
+   - SI NO LA HA DICHO: Pregúntale amablemente al final del mensaje: "¿En qué ciudad te encuentras para indicarte el hospital más cercano?"
+3. PROHIBICIÓN DE MARKDOWN: NUNCA uses asteriscos (**), guiones como título, ni ningún formato Markdown. Escribe siempre en texto plano.
+4. Responde SIEMPRE con información útil sobre la especialidad, hospitales y copago según el contexto proporcionado.
    a. Sugiere la especialidad médica adecuada.
    b. Cruza datos ÚNICAMENTE con el tipo de seguro y el contexto de hospitales enviado.
    c. Muestra las opciones de hospitales disponibles con cobertura y copago calculado según los datos reales.
@@ -196,7 +193,7 @@ Sé ESTRICTO. Ante la duda, responde "NO".`,
       ...previousMessages,
       { role: 'user', content: mensajeUsuario },
     ],
-    model: 'llama-3.3-70b-versatile',
+    model: 'llama-3.1-8b-instant',
     temperature: 0.0,
     max_tokens: 5,
   });
@@ -233,7 +230,7 @@ Ejemplos de respuesta válida: "Cardiología", "Traumatología", "Pediatría", "
       ...previousMessages,
       { role: 'user', content: mensajeUsuario },
     ],
-    model: 'llama-3.3-70b-versatile',
+    model: 'llama-3.1-8b-instant',
     temperature: 0.0,  // Máxima determinismo para clasificación
     max_tokens: 20,    // Solo necesitamos una palabra
   });
@@ -280,7 +277,7 @@ export async function obtenerAnalisisMedico(mensajeUsuario, contextoData = null,
       ...previousMessages,
       { role: 'user', content: mensajeFinal },
     ],
-    model: 'llama-3.3-70b-versatile',
+    model: 'llama-3.1-8b-instant',
     temperature: 0.3,
     max_tokens: 1200,
   });
