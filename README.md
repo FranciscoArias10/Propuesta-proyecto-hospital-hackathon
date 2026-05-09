@@ -14,6 +14,11 @@
 
 ---
 
+### ⚠️ Nota Importante (Disclaimer)
+> **Información de Prueba:** Este proyecto es un prototipo funcional (MVP). La mayoría de los datos presentados (costos de copagos, porcentajes de cobertura y disponibilidad hospitalaria) son **ficticios** y han sido generados únicamente con el propósito de probar la lógica del sistema y realizar demostraciones técnicas. No deben tomarse como valores reales para atención médica.
+
+---
+
 ## 📌 Descripción
 **Agent_Umbrella** es una plataforma diseñada para empoderar a los pacientes. Permite entender los beneficios médicos y costos asociados antes de acudir a un hospital, facilitando la toma de decisiones informada.
 
@@ -25,16 +30,14 @@ Muchos pacientes en Ecuador enfrentan incertidumbre al buscar atención médica:
 * **Red de atención:** ¿Qué hospitales aceptan mi tipo de afiliación?
 * **Especialidad correcta:** ¿A qué área debo dirigirme según mis síntomas?
 
-Esto genera pérdida de tiempo, estrés financiero y saturación innecesaria en centros de salud.
-
 ---
 
 ## 💡 La Solución
 Nuestra plataforma ofrece un acompañamiento integral:
 
-* ✅ **Triaje asistido:** Análisis descriptivo de síntomas.
+* ✅ **Triaje asistido:** Análisis descriptivo de síntomas mediante IA.
 * ✅ **Recomendación precisa:** Sugerencia de especialidad médica.
-* ✅ **Transparencia financiera:** Estimación de copagos en tiempo real.
+* ✅ **Transparencia financiera:** Estimación de copagos (datos de prueba).
 * ✅ **Logística hospitalaria:** Consulta de cobertura y disponibilidad según ubicación.
 
 ---
@@ -52,8 +55,7 @@ Nuestra plataforma ofrece un acompañamiento integral:
 ---
 
 ## 🏥 Ejemplo de Respuesta
-Cuando un usuario consulta, el sistema genera una ficha clara:
-
+*(Simulación con datos de prueba)*
 ```yaml
 Especialidad: Cardiología
 Hospital: OmniHospital (Guayaquil)
