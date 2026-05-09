@@ -1,41 +1,62 @@
-# Estimador Agéntico de Copago y Cobertura Médica
+# 🩺 Agent_Umbrella
 
-Este proyecto es un asistente inteligente diseñado para brindar transparencia médica a los pacientes. Utilizando Inteligencia Artificial y una interfaz conversacional por voz, el sistema permite a los usuarios conocer cuánto pagarán por su atención médica antes de agendar una cita.
+<p align="center">
+  <img src="https://img.shields.io/badge/Estado-MVP-success?style=for-the-badge" alt="Status MVP">
+  <img src="https://img.shields.io/badge/Región-Ecuador-blue?style=for-the-badge" alt="Ecuador">
+  <img src="https://img.shields.io/badge/Enfoque-Salud_Pública-red?style=for-the-badge" alt="Salud">
+</p>
 
-## Características Principales
-
-- **Interacción por Voz:** Interfaz amigable y accesible que permite a los pacientes hablar de sus síntomas utilizando el micrófono, ideal para usuarios menos familiarizados con la tecnología.
-- **Análisis de Síntomas con IA:** El asistente entiende los síntomas del paciente y recomienda la especialidad médica más adecuada.
-- **Simulación de Cobertura:** Cruza información con planes de seguro médico (ej. IESS, aseguradoras privadas).
-- **Comparativa de Opciones:** Sugiere diferentes hospitales o clínicas, mostrando el porcentaje de cobertura y un estimado del copago en dólares.
-- **Checklist Visual:** Genera una lista dinámica en pantalla con los datos más importantes (especialidad, mejor opción y copago estimado).
-
-## Tecnologías Utilizadas
-
-- **Frontend:** React, Vite, Tailwind CSS, Framer Motion, Lucide React.
-- **Backend:** Node.js, Express, dotenv, cors.
-- **Inteligencia Artificial:** Groq SDK (Modelo `llama-3.3-70b-versatile`).
-- **Reconocimiento de Voz:** Web Speech API para síntesis y reconocimiento de voz nativo en el navegador.
-
-## Cómo ejecutar el proyecto localmente
-
-1. Asegúrate de tener instalado [Node.js](https://nodejs.org/).
-2. Clona el repositorio y entra a la carpeta del proyecto.
-3. Instala las dependencias necesarias:
-   ```bash
-   npm install
-   ```
-4. Configura tus variables de entorno en un archivo `.env` en la raíz del proyecto (debe incluir tu `GROQ_API_KEY` o las variables necesarias).
-5. Inicia los servidores frontend (Vite) y backend (Express) de forma simultánea:
-   ```bash
-   npm run dev
-   ```
-6. Abre [http://localhost:5173/](http://localhost:5173/) para ver la aplicación en el navegador.
+<p align="center">
+  <b>Asistente conversacional inteligente para la orientación médica y estimación de copagos en Ecuador.</b>
+  <br />
+  <i>Claridad y transparencia en tu salud antes de salir de casa.</i>
+</p>
 
 ---
 
-## Colaboradores
+## 📌 Descripción
+**Agent_Umbrella** es una plataforma diseñada para empoderar a los pacientes. Permite entender los beneficios médicos y costos asociados antes de acudir a un hospital, facilitando la toma de decisiones informada.
 
-- darlyfariasmendoza@gmail.com
-- fariasp2@unemi.edu.ec
-- odat2017@hotmail.com
+---
+
+## 🚀 La Problemática
+Muchos pacientes en Ecuador enfrentan incertidumbre al buscar atención médica:
+* **Desconocimiento de costos:** ¿Cuánto tendré que pagar de copago?
+* **Red de atención:** ¿Qué hospitales aceptan mi tipo de afiliación?
+* **Especialidad correcta:** ¿A qué área debo dirigirme según mis síntomas?
+
+Esto genera pérdida de tiempo, estrés financiero y saturación innecesaria en centros de salud.
+
+---
+
+## 💡 La Solución
+Nuestra plataforma ofrece un acompañamiento integral:
+
+* ✅ **Triaje asistido:** Análisis descriptivo de síntomas.
+* ✅ **Recomendación precisa:** Sugerencia de especialidad médica.
+* ✅ **Transparencia financiera:** Estimación de copagos en tiempo real.
+* ✅ **Logística hospitalaria:** Consulta de cobertura y disponibilidad según ubicación.
+
+---
+
+## ⚙️ Flujo del Sistema
+
+| Paso | Fase | Acción del Sistema |
+| :--- | :--- | :--- |
+| 1️⃣ | **Ubicación** | Detecta tu posición para sugerir el centro más cercano. |
+| 2️⃣ | **Afiliación** | Selección del seguro (Dependencia, Independiente o Campesino). |
+| 3️⃣ | **Síntomas** | Ingreso de datos mediante texto o voz (ej: *"Dolor en el pecho"*). |
+| 4️⃣ | **Análisis** | El sistema identifica la especialidad y la prioridad del caso. |
+| 5️⃣ | **Resultado** | Muestra el hospital recomendado, cobertura y copago estimado. |
+
+---
+
+## 🏥 Ejemplo de Respuesta
+Cuando un usuario consulta, el sistema genera una ficha clara:
+
+```yaml
+Especialidad: Cardiología
+Hospital: OmniHospital (Guayaquil)
+Cobertura: 85%
+Copago Estimado: $8.00
+Prioridad: Alta
