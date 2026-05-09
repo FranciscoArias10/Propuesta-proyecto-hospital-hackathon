@@ -189,5 +189,5 @@ Este proyecto está disponible bajo la licencia **MIT**. Consulta el archivo [LI
 ---
 
 <p align="center">
-  Hecho con ❤️ en Ecuador · Hackathon 2026
+ Hackathon 2026
 </p>
