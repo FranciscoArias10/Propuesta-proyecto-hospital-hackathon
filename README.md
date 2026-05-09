@@ -101,8 +101,18 @@ Nuestra plataforma ofrece un acompañamiento integral de extremo a extremo:
 | **Voz** | Web Speech API |
 | **Backend** | Node.js · Express.js |
 | **Inteligencia Artificial** | Groq Cloud API — `llama-3.3-70b-versatile` |
-| **Base de datos** | Supabase (PostgreSQL) |
+| **Base de datos** | Supabase (PostgreSQL) — West US · North California |
 | **Concurrencia dev** | `concurrently` (Frontend + Backend en un solo comando) |
+
+---
+
+## 🌐 Despliegue en Producción
+
+| Servicio | Plataforma | Descripción |
+| :--- | :--- | :--- |
+| **Frontend** | [Netlify](https://app.netlify.com/) | Deploy automático de la app React/Vite |
+| **Backend** | [Render](https://render.com/) | Servidor Node.js/Express en producción |
+| **Base de datos** | [Supabase](https://hcsvcdzpzpxdgfpyjkoh.supabase.co) | PostgreSQL gestionado — Status: Healthy |
 
 ---
 
@@ -189,5 +199,5 @@ Este proyecto está disponible bajo la licencia **MIT**. Consulta el archivo [LI
 ---
 
 <p align="center">
- Hackathon 2026
+  Hecho con ❤️ en Ecuador · Hackathon 2025
 </p>
