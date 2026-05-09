@@ -8,7 +8,6 @@
   <img src="https://img.shields.io/badge/IA-Groq%20%7C%20LLaMA%203.3%2070B-orange?style=for-the-badge" alt="IA">
   <img src="https://img.shields.io/badge/DB-Supabase-3ECF8E?style=for-the-badge" alt="Supabase">
   <img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="MIT">
-  <a href="https://hackiathon-viamatica.netlify.app/"><img src="https://img.shields.io/badge/🚀_Demo_en_Vivo-Netlify-00C7B7?style=for-the-badge" alt="Demo"></a>
 </p>
 
 <p align="center">
@@ -90,6 +89,16 @@ Nuestra plataforma ofrece un acompañamiento integral de extremo a extremo:
 │  [ 📞 Llamar al 911 ]        [ 🗺️ Ver ruta en mapa ]          │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 🌍 Demo en Vivo
+
+Puedes probar la aplicación desplegada directamente desde tu navegador, sin necesidad de instalar nada:
+
+🔗 **[https://hackiathon-viamatica.netlify.app/](https://hackiathon-viamatica.netlify.app/)**
+
+> Recuerda que los datos de copagos y cobertura mostrados son ficticios, generados para fines de demostración.
 
 ---
 
@@ -200,5 +209,5 @@ Este proyecto está disponible bajo la licencia **MIT**. Consulta el archivo [LI
 ---
 
 <p align="center">
-  Hackathon 2026
+  Hecho con ❤️ en Ecuador · Hackathon Viamatica 2026
 </p>
